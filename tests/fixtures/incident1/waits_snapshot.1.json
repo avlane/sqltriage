@@ -1,0 +1,149 @@
+[
+  {
+    "wait_type": "SLEEP_TASK",
+    "waiting_tasks_count": 91234000,
+    "wait_time_ms": 912340000,
+    "max_wait_time_ms": 1000,
+    "signal_wait_time_ms": 900000
+  },
+  {
+    "wait_type": "LAZYWRITER_SLEEP",
+    "waiting_tasks_count": 51200,
+    "wait_time_ms": 51200000,
+    "max_wait_time_ms": 1000,
+    "signal_wait_time_ms": 2000
+  },
+  {
+    "wait_type": "XE_TIMER_EVENT",
+    "waiting_tasks_count": 40000,
+    "wait_time_ms": 640000000,
+    "max_wait_time_ms": 15000,
+    "signal_wait_time_ms": 3000
+  },
+  {
+    "wait_type": "REQUEST_FOR_DEADLOCK_SEARCH",
+    "waiting_tasks_count": 17000,
+    "wait_time_ms": 85000000,
+    "max_wait_time_ms": 5000,
+    "signal_wait_time_ms": 1
+  },
+  {
+    "wait_type": "SQLTRACE_INCREMENTAL_FLUSH_SLEEP",
+    "waiting_tasks_count": 12000,
+    "wait_time_ms": 40000000,
+    "max_wait_time_ms": 4000,
+    "signal_wait_time_ms": 1
+  },
+  {
+    "wait_type": "DIRTY_PAGE_POLL",
+    "waiting_tasks_count": 780000,
+    "wait_time_ms": 78000000,
+    "max_wait_time_ms": 100,
+    "signal_wait_time_ms": 5000
+  },
+  {
+    "wait_type": "CHECKPOINT_QUEUE",
+    "waiting_tasks_count": 2000000,
+    "wait_time_ms": 7200000000,
+    "max_wait_time_ms": 120000,
+    "signal_wait_time_ms": 1000
+  },
+  {
+    "wait_type": "LOGMGR_QUEUE",
+    "waiting_tasks_count": 19000000,
+    "wait_time_ms": 190000000,
+    "max_wait_time_ms": 150,
+    "signal_wait_time_ms": 40000
+  },
+  {
+    "wait_type": "HADR_FILESTREAM_IOMGR_IOCOMPLETION",
+    "waiting_tasks_count": 160000,
+    "wait_time_ms": 80000000,
+    "max_wait_time_ms": 500,
+    "signal_wait_time_ms": 1000
+  },
+  {
+    "wait_type": "DISPATCHER_QUEUE_SEMAPHORE",
+    "waiting_tasks_count": 400000,
+    "wait_time_ms": 3200000000,
+    "max_wait_time_ms": 60000,
+    "signal_wait_time_ms": 2000
+  },
+  {
+    "wait_type": "BROKER_TO_FLUSH",
+    "waiting_tasks_count": 40000,
+    "wait_time_ms": 80000000,
+    "max_wait_time_ms": 2000,
+    "signal_wait_time_ms": 1
+  },
+  {
+    "wait_type": "LCK_M_X",
+    "waiting_tasks_count": 5400,
+    "wait_time_ms": 31000000,
+    "max_wait_time_ms": 61000,
+    "signal_wait_time_ms": 3000
+  },
+  {
+    "wait_type": "LCK_M_S",
+    "waiting_tasks_count": 2900,
+    "wait_time_ms": 9200000,
+    "max_wait_time_ms": 30000,
+    "signal_wait_time_ms": 1000
+  },
+  {
+    "wait_type": "PAGELATCH_UP",
+    "waiting_tasks_count": 4100000,
+    "wait_time_ms": 5200000,
+    "max_wait_time_ms": 310,
+    "signal_wait_time_ms": 900000
+  },
+  {
+    "wait_type": "PAGELATCH_EX",
+    "waiting_tasks_count": 2300000,
+    "wait_time_ms": 4400000,
+    "max_wait_time_ms": 180,
+    "signal_wait_time_ms": 300000
+  },
+  {
+    "wait_type": "WRITELOG",
+    "waiting_tasks_count": 90000000,
+    "wait_time_ms": 61000000,
+    "max_wait_time_ms": 280,
+    "signal_wait_time_ms": 1200000
+  },
+  {
+    "wait_type": "SOS_SCHEDULER_YIELD",
+    "waiting_tasks_count": 700000000,
+    "wait_time_ms": 210000000,
+    "max_wait_time_ms": 90,
+    "signal_wait_time_ms": 11800000
+  },
+  {
+    "wait_type": "CXPACKET",
+    "waiting_tasks_count": 12000000,
+    "wait_time_ms": 90000000,
+    "max_wait_time_ms": 4000,
+    "signal_wait_time_ms": 80000
+  },
+  {
+    "wait_type": "ASYNC_NETWORK_IO",
+    "waiting_tasks_count": 5000000,
+    "wait_time_ms": 31000000,
+    "max_wait_time_ms": 3000,
+    "signal_wait_time_ms": 40000
+  },
+  {
+    "wait_type": "PAGEIOLATCH_SH",
+    "waiting_tasks_count": 22000000,
+    "wait_time_ms": 70000000,
+    "max_wait_time_ms": 900,
+    "signal_wait_time_ms": 20000
+  },
+  {
+    "wait_type": "HADR_SYNC_COMMIT",
+    "waiting_tasks_count": 80000000,
+    "wait_time_ms": 52000000,
+    "max_wait_time_ms": 260,
+    "signal_wait_time_ms": 400000
+  }
+]
