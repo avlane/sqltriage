@@ -6,6 +6,7 @@ it twice, ``ctx.interval`` seconds apart, and look at the difference.
 """
 from collections import namedtuple
 
+from .. import waitinfo
 from ..models import Finding
 
 NAME = "waits"
@@ -63,16 +64,54 @@ def sample(ctx):
     return ctx.cache["waits"]
 
 
+def significant(deltas):
+    """Drop the idle background waits."""
+    return [d for d in deltas if not waitinfo.is_benign(d.wait_type)]
+
+
+def score_wait(delta, share, interval_ms):
+    """0-95: what the wait is, how much of the wait time it is, how many sessions it holds up."""
+    info = waitinfo.explain(delta.wait_type)
+    concurrency = delta.wait_ms / interval_ms  # average number of tasks waiting
+    score = info.weight + min(35.0, share * 0.5) + min(15.0, concurrency * 3)
+    return int(min(95, round(score)))
+
+
 def run(ctx):
-    deltas = sample(ctx)
-    lines = []
-    for d in deltas[: ctx.top]:
-        lines.append("{:<32} {:>8} ms over {:>6} waits".format(d.wait_type, d.wait_ms, d.tasks))
-    return [
-        Finding(
-            check=NAME,
-            title="Top waits over a {:g}s sample".format(ctx.interval),
-            score=20,
-            evidence=lines,
+    meaningful = significant(sample(ctx))
+    if not meaningful:
+        return [Finding(NAME, "No significant waits in the sample", 0)]
+    total = sum(d.wait_ms for d in meaningful)
+    interval_ms = ctx.interval * 1000.0
+    findings = []
+    for d in meaningful[: ctx.top]:
+        share = 100.0 * d.wait_ms / total
+        info = waitinfo.explain(d.wait_type)
+        avg = d.wait_ms / float(d.tasks)
+        evidence = [
+            "{:.0f}% of non-idle wait time ({} ms over {} waits, {:.1f} ms average)".format(
+                share, d.wait_ms, d.tasks, avg
+            ),
+            "{:.1f} tasks waiting on average during the sample".format(d.wait_ms / interval_ms),
+        ]
+        if d.wait_ms and d.signal_ms:
+            evidence.append("signal wait {:.0f}% of the wait time".format(100.0 * d.signal_ms / d.wait_ms))
+        findings.append(
+            Finding(
+                check=NAME,
+                title="Wait: {}".format(d.wait_type),
+                score=score_wait(d, share, interval_ms),
+                detail=info.text,
+                evidence=evidence,
+                advice=list(info.advice),
+                data={
+                    "wait_type": d.wait_type,
+                    "category": info.category,
+                    "wait_ms": d.wait_ms,
+                    "tasks": d.tasks,
+                    "signal_ms": d.signal_ms,
+                    "share_pct": round(share, 1),
+                },
+            )
         )
-    ]
+    return findings

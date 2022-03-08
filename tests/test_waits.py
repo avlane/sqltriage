@@ -55,10 +55,42 @@ class SampleTests(unittest.TestCase):
         waits.sample(ctx)
         self.assertEqual(slept, [10])
 
-    def test_run_reports_top_waits(self):
+    def test_run_skips_idle_waits(self):
         ctx, _ = self.make_ctx()
+        findings = waits.run(ctx)
+        names = [f.data["wait_type"] for f in findings]
+        self.assertEqual(len(findings), ctx.top)
+        self.assertNotIn("SLEEP_TASK", names)
+        self.assertNotIn("XE_TIMER_EVENT", names)
+
+    def test_locking_outranks_background_noise(self):
+        ctx, _ = self.make_ctx()
+        ctx.top = 20
+        by_name = {f.data["wait_type"]: f for f in waits.run(ctx)}
+        self.assertGreater(by_name["LCK_M_X"].score, by_name["ASYNC_NETWORK_IO"].score)
+        self.assertEqual(by_name["LCK_M_X"].data["category"], "locking")
+
+    def test_nothing_significant(self):
+        ctx = Context(FixtureSource(FIXTURES), interval=1, sleep=lambda s: None)
+        ctx.cache["waits"] = [waits.WaitDelta("SLEEP_TASK", 5, 100, 1, None)]
         (finding,) = waits.run(ctx)
-        self.assertEqual(len(finding.evidence), ctx.top)
+        self.assertEqual(finding.score, 0)
+
+
+class ExplainTests(unittest.TestCase):
+    def test_exact_prefix_and_unknown(self):
+        from sqltriage import waitinfo
+
+        self.assertEqual(waitinfo.explain("WRITELOG").category, "log")
+        self.assertEqual(waitinfo.explain("LCK_M_RIn_NL").category, "locking")
+        self.assertEqual(waitinfo.explain("PAGEIOLATCH_EX").category, "io")
+        self.assertEqual(waitinfo.explain("SOMETHING_NEW"), waitinfo.UNKNOWN)
+
+    def test_benign(self):
+        from sqltriage import waitinfo
+
+        self.assertTrue(waitinfo.is_benign("LAZYWRITER_SLEEP"))
+        self.assertFalse(waitinfo.is_benign("WRITELOG"))
 
 
 if __name__ == "__main__":
