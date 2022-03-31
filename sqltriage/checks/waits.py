@@ -82,7 +82,7 @@ def run(ctx):
     if not meaningful:
         return [Finding(NAME, "No significant waits in the sample", 0)]
     total = sum(d.wait_ms for d in meaningful)
-    interval_ms = ctx.interval * 1000.0
+    interval_ms = max(ctx.interval, 0.001) * 1000.0
     findings = []
     for d in meaningful[: ctx.top]:
         share = 100.0 * d.wait_ms / total
