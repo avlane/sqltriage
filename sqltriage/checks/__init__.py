@@ -3,6 +3,6 @@
 A check module defines ``NAME`` and ``run(ctx)``, which returns a list of
 ``Finding`` objects.  Register new modules in ``CHECKS`` below.
 """
-from . import waits
+from . import blocking, waits
 
-CHECKS = {module.NAME: module for module in (waits,)}
+CHECKS = {module.NAME: module for module in (waits, blocking)}
