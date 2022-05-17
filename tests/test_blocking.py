@@ -4,7 +4,7 @@ import unittest
 
 from sqltriage.checks import blocking
 from sqltriage.context import Context
-from sqltriage.source import FixtureSource
+from sqltriage.source import FixtureSource, SourceError
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -59,6 +59,34 @@ class RunTests(unittest.TestCase):
         self.assertEqual(big.data["longest_wait_s"], 94.0)
         self.assertGreater(big.score, small.score)
         self.assertGreaterEqual(big.score, 65)
+
+    def test_head_blocker_input_buffer_is_shown(self):
+        big, small = blocking.run(Context(FixtureSource(FIXTURES)))
+        self.assertTrue(any("Object Id = 1134627161" in line for line in big.evidence))
+        self.assertTrue(any("BEGIN TRAN; UPDATE dbo.Orders" in line for line in small.evidence))
+
+    def test_missing_input_buffer_is_not_fatal(self):
+        class Flaky(FixtureSource):
+            def fetch(self, name, sql, params=(), database=None):
+                if name.startswith("blocking_inputbuffer"):
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        findings = blocking.run(Context(Flaky(FIXTURES)))
+        self.assertEqual(len(findings), 2)
+        self.assertFalse(any("input buffer" in line for line in findings[0].evidence))
+
+    def test_long_input_buffer_is_trimmed(self):
+        head = blocking.Node(1, {"session_id": 1})
+        head.children.append(blocking.Node(2, {"session_id": 2, "blocking_session_id": 1}))
+
+        class Big(FixtureSource):
+            def fetch(self, name, sql, params=(), database=None):
+                return [{"event_type": "Language Event", "event_info": "SELECT " + "x, " * 400}]
+
+        line = blocking.input_buffer(Context(Big(FIXTURES)), head)
+        self.assertTrue(line.endswith("..."))
+        self.assertLess(len(line), 330)
 
     def test_fixture_is_valid_json_rows(self):
         with open(os.path.join(FIXTURES, "blocking_sessions.json")) as handle:

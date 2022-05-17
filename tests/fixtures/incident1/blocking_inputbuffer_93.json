@@ -1,0 +1,7 @@
+[
+  {
+    "event_type": "Language Event",
+    "parameters": 0,
+    "event_info": "BEGIN TRAN;\nUPDATE dbo.Orders SET Status = 'HOLD' WHERE OrderId = 1042;\n-- TODO: commit after checking totals"
+  }
+]

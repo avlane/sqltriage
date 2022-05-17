@@ -1,5 +1,6 @@
 """Blocking chains, rendered as trees rooted at the head blocker."""
 from ..models import Finding
+from ..source import SourceError
 
 NAME = "blocking"
 
@@ -30,6 +31,15 @@ WHERE s.is_user_process = 1
        OR s.session_id IN (SELECT blocking_session_id
                            FROM sys.dm_exec_requests
                            WHERE blocking_session_id <> 0));"""
+
+
+# What the head blocker last sent.  A sleeping session has no current request,
+# so ask by session only; TOP (1) keeps MARS sessions to a single row.
+INPUT_BUFFER_SQL = """\
+SELECT TOP (1) event_type, parameters, event_info
+FROM sys.dm_exec_input_buffer(?, NULL);"""
+
+INPUT_BUFFER_LIMIT = 300
 
 
 class Node:
@@ -112,6 +122,24 @@ def tree_lines(head):
     return lines
 
 
+def input_buffer(ctx, head):
+    """The head blocker's last batch as one trimmed line, or None."""
+    if head.placeholder and not head.children:
+        return None
+    try:
+        rows = ctx.source.fetch(
+            "blocking_inputbuffer_{}".format(head.session_id), INPUT_BUFFER_SQL, (head.session_id,)
+        )
+    except SourceError:
+        return None
+    if not rows or not rows[0].get("event_info"):
+        return None
+    text = " ".join(str(rows[0]["event_info"]).split())
+    if len(text) > INPUT_BUFFER_LIMIT:
+        text = text[: INPUT_BUFFER_LIMIT - 3] + "..."
+    return "{}: {}".format(rows[0].get("event_type") or "input buffer", text)
+
+
 def score_chain(head):
     victims = head.descendants()
     longest = max([v.wait_ms for v in victims] or [0]) / 1000.0
@@ -133,13 +161,20 @@ def run(ctx):
         else:
             title = "Blocking: spid {} is stuck".format(head.session_id)
             detail = "Blocked by a system condition ({}).".format(head.system_blocker)
+        evidence = tree_lines(head)
+        buffered = input_buffer(ctx, head)
+        if buffered:
+            evidence.append("head blocker input buffer - " + buffered)
         findings.append(
             Finding(
                 check=NAME,
                 title=title,
                 score=score_chain(head) if victims else 40,
                 detail=detail,
-                evidence=tree_lines(head),
+                evidence=evidence,
+                advice=["Find out why spid {} is not finishing; KILL is the last resort.".format(head.session_id)]
+                if victims
+                else [],
                 data={
                     "head_session_id": head.session_id,
                     "victims": len(victims),
