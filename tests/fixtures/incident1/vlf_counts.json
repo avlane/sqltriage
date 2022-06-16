@@ -1,0 +1,58 @@
+[
+  {
+    "database_name": "master",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 4,
+    "total_log_mb": 2.0,
+    "active_vlfs": 2
+  },
+  {
+    "database_name": "model",
+    "recovery_model_desc": "FULL",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 4,
+    "total_log_mb": 8.0,
+    "active_vlfs": 2
+  },
+  {
+    "database_name": "msdb",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 8,
+    "total_log_mb": 20.0,
+    "active_vlfs": 3
+  },
+  {
+    "database_name": "tempdb",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 8,
+    "total_log_mb": 512.0,
+    "active_vlfs": 4
+  },
+  {
+    "database_name": "PayrollDB",
+    "recovery_model_desc": "FULL",
+    "log_reuse_wait_desc": "ACTIVE_TRANSACTION",
+    "vlf_count": 18432,
+    "total_log_mb": 61440.0,
+    "active_vlfs": 17900
+  },
+  {
+    "database_name": "ReportsDB",
+    "recovery_model_desc": "FULL",
+    "log_reuse_wait_desc": "LOG_BACKUP",
+    "vlf_count": 2300,
+    "total_log_mb": 24576.0,
+    "active_vlfs": 2100
+  },
+  {
+    "database_name": "Staging",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 640,
+    "total_log_mb": 6144.0,
+    "active_vlfs": 12
+  }
+]
