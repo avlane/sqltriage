@@ -35,7 +35,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
 
     def test_connection_string_trusted(self):
-        args = build_parser().parse_args(["-S", "SQLPROD01"])
+        args = build_parser().parse_args(["-S", "SQLPROD01", "--driver", "ODBC Driver 17 for SQL Server"])
         cs = connection_string(args)
         self.assertIn("SERVER=SQLPROD01", cs)
         self.assertIn("Trusted_Connection=yes", cs)
@@ -43,10 +43,10 @@ class CliTests(unittest.TestCase):
     def test_connection_string_sql_login(self):
         os.environ["SQLTRIAGE_PASSWORD"] = "hunter2"
         self.addCleanup(os.environ.pop, "SQLTRIAGE_PASSWORD")
-        args = build_parser().parse_args(["-U", "triage"])
+        args = build_parser().parse_args(["-U", "triage", "--driver", "ODBC Driver 18 for SQL Server"])
         cs = connection_string(args)
         self.assertIn("UID=triage", cs)
-        self.assertIn("PWD=hunter2", cs)
+        self.assertIn("PWD={hunter2}", cs)
 
     def test_version_flag(self):
         with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as cm:

@@ -5,6 +5,7 @@ import sys
 
 from . import __version__
 from .checks import CHECKS
+from .connect import build_connection_string
 from .context import Context
 from .render import FORMATS
 from .report import build_report
@@ -20,6 +21,9 @@ def build_parser():
     parser.add_argument("-S", "--server", default="localhost", help="instance to connect to")
     parser.add_argument("-d", "--database", default="master", help="initial database")
     parser.add_argument("-U", "--user", help="SQL login (default is a trusted connection)")
+    parser.add_argument("--driver", help="ODBC driver name (default: newest installed of 18 and 17)")
+    parser.add_argument("--no-encrypt", action="store_true", help="connect without encryption")
+    parser.add_argument("--trust-server-cert", action="store_true", help="accept a self-signed server certificate")
     parser.add_argument("--fixtures", metavar="DIR", help="replay recorded query results instead of connecting")
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
@@ -29,18 +33,14 @@ def build_parser():
 
 
 def connection_string(args):
-    parts = [
-        "DRIVER={ODBC Driver 17 for SQL Server}",
-        "SERVER=" + args.server,
-        "DATABASE=" + args.database,
-        "APP=sqltriage",
-    ]
-    if args.user:
-        parts.append("UID=" + args.user)
-        parts.append("PWD=" + os.environ.get("SQLTRIAGE_PASSWORD", ""))
-    else:
-        parts.append("Trusted_Connection=yes")
-    return ";".join(parts)
+    return build_connection_string(
+        args.server,
+        args.database,
+        user=args.user,
+        driver=args.driver,
+        encrypt=not args.no_encrypt,
+        trust_server_certificate=args.trust_server_cert,
+    )
 
 
 def main(argv=None, out=None):
