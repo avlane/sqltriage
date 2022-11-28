@@ -63,6 +63,7 @@ class RunTests(unittest.TestCase):
     def test_head_blocker_input_buffer_is_shown(self):
         big, small = blocking.run(Context(FixtureSource(FIXTURES)))
         self.assertTrue(any("Object Id = 1134627161" in line for line in big.evidence))
+        self.assertTrue(big.block[0].endswith("<- head blocker"))
         self.assertTrue(any("BEGIN TRAN; UPDATE dbo.Orders" in line for line in small.evidence))
 
     def test_missing_input_buffer_is_not_fatal(self):

@@ -22,6 +22,8 @@ class Finding:
     evidence: List[str] = field(default_factory=list)
     advice: List[str] = field(default_factory=list)
     data: Dict = field(default_factory=dict)
+    # preformatted lines (a tree, say) that a renderer must not reflow or bullet
+    block: List[str] = field(default_factory=list)
 
     @property
     def severity(self):

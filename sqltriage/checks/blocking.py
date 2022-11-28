@@ -161,7 +161,7 @@ def run(ctx):
         else:
             title = "Blocking: spid {} is stuck".format(head.session_id)
             detail = "Blocked by a system condition ({}).".format(head.system_blocker)
-        evidence = tree_lines(head)
+        evidence = []
         buffered = input_buffer(ctx, head)
         if buffered:
             evidence.append("head blocker input buffer - " + buffered)
@@ -172,6 +172,7 @@ def run(ctx):
                 score=score_chain(head) if victims else 40,
                 detail=detail,
                 evidence=evidence,
+                block=tree_lines(head),
                 advice=["Find out why spid {} is not finishing; KILL is the last resort.".format(head.session_id)]
                 if victims
                 else [],

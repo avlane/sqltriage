@@ -13,7 +13,7 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 class CliTests(unittest.TestCase):
     def run_cli(self, *argv):
         out = io.StringIO()
-        code = main(["--fixtures", FIXTURES, "-i", "0"] + list(argv), out=out)
+        code = main(["--fixtures", FIXTURES] + list(argv), out=out)
         return code, out.getvalue()
 
     def test_text_report(self):
@@ -28,6 +28,20 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         scores = [f["score"] for f in data["findings"]]
         self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_every_check_contributes(self):
+        code, text = self.run_cli("-f", "json", "-n", "50")
+        checks = {f["check"] for f in json.loads(text)["findings"]}
+        self.assertEqual(checks, {"waits", "blocking", "tempdb", "vlf", "cpu"})
+
+    def test_tree_is_not_bulleted(self):
+        _, text = self.run_cli("--only", "blocking")
+        self.assertIn("      spid 57 [sleeping]", text)
+        self.assertNotIn("- |-", text)
+
+    def test_wait_concurrency_uses_the_interval(self):
+        _, text = self.run_cli("--only", "waits", "-i", "10")
+        self.assertIn("9.2 tasks waiting on average", text)
 
     def test_unknown_check_is_rejected(self):
         with contextlib.redirect_stderr(io.StringIO()):

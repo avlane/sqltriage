@@ -58,6 +58,8 @@ def main(argv=None, out=None):
     else:
         source = PyodbcSource(connection_string(args))
     ctx = Context(source, interval=args.interval, top=args.top)
+    if args.fixtures:
+        ctx.sleep = lambda seconds: None  # recorded samples are already apart in time
     try:
         report = build_report(ctx, args.server, names)
     finally:

@@ -19,6 +19,8 @@ def to_text(report):
         lines.append("{:>2}. [{} {}] {}".format(number, f.severity.upper(), f.score, f.title))
         if f.detail:
             lines.append("    " + f.detail)
+        for item in f.block:
+            lines.append("      " + item)
         for item in f.evidence:
             lines.append("      - " + item)
         for item in f.advice:
@@ -41,6 +43,7 @@ def to_dict(report):
                 "severity": severity_for(f.score),
                 "score": f.score,
                 "detail": f.detail,
+                "block": f.block,
                 "evidence": f.evidence,
                 "advice": f.advice,
                 "data": f.data,
