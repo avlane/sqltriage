@@ -1,0 +1,20 @@
+[
+  {
+    "job_name": "IndexOptimize - USER_DATABASES",
+    "runs": 60,
+    "avg_seconds": 7200.0,
+    "max_seconds": 9100
+  },
+  {
+    "job_name": "Update Statistics - Reporting",
+    "runs": 60,
+    "avg_seconds": 1200.0,
+    "max_seconds": 1900
+  },
+  {
+    "job_name": "Purge Old Audit Rows",
+    "runs": 2,
+    "avg_seconds": 300.0,
+    "max_seconds": 340
+  }
+]

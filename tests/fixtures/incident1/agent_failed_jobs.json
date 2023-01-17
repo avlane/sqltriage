@@ -1,0 +1,26 @@
+[
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "started_at": "2023-03-14T09:45:00",
+    "run_duration": 14,
+    "message": "The job failed.  The Job was invoked by Schedule 12 (Every 15 minutes).  The last step to run was step 1 (DatabaseBackup - USER_DATABASES - LOG)."
+  },
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "started_at": "2023-03-14T09:30:00",
+    "run_duration": 12,
+    "message": "The job failed.  The Job was invoked by Schedule 12 (Every 15 minutes).  The last step to run was step 1 (DatabaseBackup - USER_DATABASES - LOG)."
+  },
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "started_at": "2023-03-14T09:15:00",
+    "run_duration": 13,
+    "message": "The job failed.  The Job was invoked by Schedule 12 (Every 15 minutes).  The last step to run was step 1 (DatabaseBackup - USER_DATABASES - LOG)."
+  },
+  {
+    "job_name": "Nightly ETL Load",
+    "started_at": "2023-03-14T02:00:00",
+    "run_duration": 11540,
+    "message": "The job failed.  The Job was invoked by Schedule 7 (Nightly 2AM).  The last step to run was step 3 (Load Fact Tables)."
+  }
+]
