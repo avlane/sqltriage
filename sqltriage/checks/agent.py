@@ -1,4 +1,4 @@
-"""SQL Server Agent jobs: recent failures."""
+"""SQL Server Agent jobs: recent failures and jobs that are running too long."""
 from collections import OrderedDict
 
 from ..models import Finding
@@ -21,6 +21,38 @@ WHERE h.step_id = 0
   AND h.run_status = 0
   AND msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())
 ORDER BY started_at DESC;"""
+
+# Jobs that have started and not stopped in the current Agent session.  The
+# newest row in syssessions is the session since the last Agent restart.
+RUNNING_SQL = """\
+SELECT j.name AS job_name,
+       ja.start_execution_date AS started_at,
+       DATEDIFF(SECOND, ja.start_execution_date, GETDATE()) AS running_seconds,
+       ISNULL(ja.last_executed_step_id, 0) + 1 AS current_step_id
+FROM msdb.dbo.sysjobactivity AS ja
+JOIN msdb.dbo.sysjobs AS j
+  ON j.job_id = ja.job_id
+WHERE ja.session_id = (SELECT TOP (1) session_id FROM msdb.dbo.syssessions ORDER BY agent_start_date DESC)
+  AND ja.start_execution_date IS NOT NULL
+  AND ja.stop_execution_date IS NULL;"""
+
+# What a normal run looks like: successful outcomes only.
+DURATION_SQL = """\
+SELECT j.name AS job_name,
+       COUNT(*) AS runs,
+       AVG(CAST((h.run_duration / 10000) * 3600 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration % 100) AS float)) AS avg_seconds,
+       MAX((h.run_duration / 10000) * 3600 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration % 100)) AS max_seconds
+FROM msdb.dbo.sysjobhistory AS h
+JOIN msdb.dbo.sysjobs AS j
+  ON j.job_id = h.job_id
+WHERE h.step_id = 0
+  AND h.run_status = 1
+GROUP BY j.name;"""
+
+MIN_LONG_SECONDS = 600       # never call a job that has run under ten minutes "long"
+NO_HISTORY_SECONDS = 3600    # without a baseline, an hour is long
+MIN_HISTORY_RUNS = 3
+LONG_FACTOR = 3.0            # times the average
 
 
 def hhmmss_to_seconds(value):
@@ -48,7 +80,61 @@ def failure_score(job_name, count):
     return min(score, 90)
 
 
-def run(ctx):
+def long_running(ctx):
+    """Running jobs that have gone well past their usual duration."""
+    running = ctx.source.fetch("agent_running_jobs", RUNNING_SQL)
+    if not running:
+        return []
+    history = {r["job_name"]: r for r in ctx.source.fetch("agent_job_durations", DURATION_SQL)}
+    found = []
+    for job in running:
+        seconds = job["running_seconds"]
+        past = history.get(job["job_name"])
+        if past and past["runs"] >= MIN_HISTORY_RUNS:
+            usual = float(past["avg_seconds"])
+            threshold = max(MIN_LONG_SECONDS, LONG_FACTOR * usual, float(past["max_seconds"]))
+            ratio = seconds / usual if usual else None
+        else:
+            usual = None
+            threshold = NO_HISTORY_SECONDS
+            ratio = None
+        if seconds > threshold:
+            found.append((job, usual, ratio))
+    return found
+
+
+def _span(seconds):
+    hours, rest = divmod(int(seconds), 3600)
+    return "{}h{:02d}m".format(hours, rest // 60) if hours else "{}m".format(rest // 60)
+
+
+def long_running_findings(ctx):
+    findings = []
+    for job, usual, ratio in long_running(ctx):
+        seconds = job["running_seconds"]
+        if usual:
+            evidence = [
+                "running for {} against a usual {} ({:.1f}x)".format(_span(seconds), _span(usual), ratio),
+            ]
+            score = 40 + min(40, (ratio - 1) * 8)
+        else:
+            evidence = ["running for {} and there is no run history to compare with".format(_span(seconds))]
+            score = 40
+        evidence.append("started {}, now on step {}".format(job["started_at"], job["current_step_id"]))
+        findings.append(
+            Finding(
+                check=NAME,
+                title="Agent job running long: {} ({})".format(job["job_name"], _span(seconds)),
+                score=int(round(score)),
+                evidence=evidence,
+                advice=["Check what the job's session is waiting on before deciding to stop it."],
+                data={"job": job["job_name"], "running_seconds": seconds},
+            )
+        )
+    return findings
+
+
+def failed_job_findings(ctx):
     hours, jobs = failed_jobs(ctx)
     findings = []
     for job_name, rows in jobs.items():
@@ -70,3 +156,7 @@ def run(ctx):
             )
         )
     return findings
+
+
+def run(ctx):
+    return failed_job_findings(ctx) + long_running_findings(ctx)
