@@ -1,0 +1,24 @@
+[
+  {
+    "query_id": 4412,
+    "query_sql_text": "(@p0 int)SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId",
+    "object_name": "usp_PayRunTotals",
+    "recent_execs": 420,
+    "history_execs": 9000,
+    "recent_avg_duration_us": 1950000.0,
+    "history_avg_duration_us": 510000.0,
+    "plan_count": 2,
+    "forced_plan_id": null
+  },
+  {
+    "query_id": 5120,
+    "query_sql_text": "SELECT e.EmployeeId, e.Name FROM dbo.Employee e WHERE e.Dept = @dept AND e.Active = 1",
+    "object_name": null,
+    "recent_execs": 60,
+    "history_execs": 1400,
+    "recent_avg_duration_us": 24000.0,
+    "history_avg_duration_us": 10000.0,
+    "plan_count": 3,
+    "forced_plan_id": null
+  }
+]

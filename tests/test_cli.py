@@ -32,7 +32,7 @@ class CliTests(unittest.TestCase):
     def test_every_check_contributes(self):
         code, text = self.run_cli("-f", "json", "-n", "50")
         checks = {f["check"] for f in json.loads(text)["findings"]}
-        self.assertEqual(checks, {"waits", "blocking", "tempdb", "vlf", "agent", "cpu"})
+        self.assertEqual(checks, {"waits", "blocking", "querystore", "tempdb", "vlf", "agent", "cpu"})
 
     def test_tree_is_not_bulleted(self):
         _, text = self.run_cli("--only", "blocking")
