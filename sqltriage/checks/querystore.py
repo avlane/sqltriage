@@ -1,4 +1,4 @@
-"""Query Store: queries that have got slower recently."""
+"""Query Store: queries that have got slower recently, and forced plans that fail."""
 from ..models import Finding
 from ..source import SourceError
 
@@ -74,6 +74,64 @@ WHERE a.recent_execs >= {min_execs}
   AND a.recent_duration_us / a.recent_execs > {ratio} * (a.history_duration_us / a.history_execs)
 ORDER BY (a.recent_duration_us / a.recent_execs - a.history_duration_us / a.history_execs) * a.recent_execs DESC;"""
 
+# Forced plans that the optimizer has failed to apply at least once.
+FORCED_FAILURES_SQL = """\
+SET NOCOUNT ON;
+SELECT p.plan_id,
+       p.query_id,
+       p.force_failure_count,
+       p.last_force_failure_reason_desc,
+       OBJECT_NAME(q.object_id) AS object_name,
+       qt.query_sql_text
+FROM sys.query_store_plan AS p
+JOIN sys.query_store_query AS q
+  ON q.query_id = p.query_id
+JOIN sys.query_store_query_text AS qt
+  ON qt.query_text_id = q.query_text_id
+WHERE p.is_forced_plan = 1
+  AND p.force_failure_count > 0
+ORDER BY p.force_failure_count DESC;"""
+
+# last_force_failure_reason_desc -> (meaning, what to do)
+FORCE_FAILURE_REASONS = {
+    "NO_INDEX": (
+        "An index the forced plan uses no longer exists.",
+        "Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one.",
+    ),
+    "NO_PLAN": (
+        "The optimizer could not produce a plan from the forced one.",
+        "Unforce the plan and check what changed in the schema or compatibility level.",
+    ),
+    "ONLINE_INDEX_BUILD": (
+        "An online index build on a table in the plan blocked forcing.",
+        "Usually clears when the build finishes.",
+    ),
+    "TIME_OUT": (
+        "Forcing the plan timed out in the optimizer.",
+        "Check for very complex queries; unforce if it keeps happening.",
+    ),
+    "HINT_CONFLICT": (
+        "The query hints in the text conflict with the forced plan.",
+        "Remove the conflicting hint or the forced plan.",
+    ),
+    "INVALID_STARJOIN": (
+        "The forced plan has a star join the optimizer can no longer build.",
+        "Unforce the plan and re-evaluate.",
+    ),
+    "NO_DB": (
+        "A database referenced by the plan no longer exists.",
+        "Unforce the plan.",
+    ),
+    "VIEW_COMPILE_FAILED": (
+        "A view in the plan could not be compiled.",
+        "Check the views the query uses.",
+    ),
+    "GENERAL_FAILURE": (
+        "The plan could not be forced for a reason Query Store does not break down.",
+        "Look in the error log and extended events for the failure; unforce if it persists.",
+    ),
+}
+
 TEXT_LIMIT = 200
 
 
@@ -142,17 +200,47 @@ def regression_finding(database, row):
     )
 
 
+def force_failure_finding(database, row):
+    reason = row.get("last_force_failure_reason_desc") or "NONE"
+    meaning, todo = FORCE_FAILURE_REASONS.get(
+        reason, ("Query Store reports reason " + reason + ".", "Look the reason up in sys.query_store_plan.")
+    )
+    count = row["force_failure_count"]
+    label = row.get("object_name") or "ad hoc query"
+    return Finding(
+        check=NAME,
+        title="Forced plan failing in {}: plan {} for query {} ({})".format(
+            database, row["plan_id"], row["query_id"], label
+        ),
+        score=min(80, 45 + count // 10),
+        detail="A plan has been forced for this query but the optimizer keeps failing to use it.",
+        evidence=[
+            "{} failure(s); last reason {}: {}".format(count, reason, meaning),
+            "text: " + shorten(row["query_sql_text"]),
+        ],
+        advice=[todo],
+        data={"database": database, "plan_id": row["plan_id"], "failures": count, "reason": reason},
+    )
+
+
+def check_database(ctx, database, sql):
+    findings = []
+    for row in ctx.source.fetch("querystore_regressions", sql, database=database):
+        findings.append(regression_finding(database, row))
+    for row in ctx.source.fetch("querystore_forced_failures", FORCED_FAILURES_SQL, database=database):
+        findings.append(force_failure_finding(database, row))
+    return findings
+
+
 def run(ctx):
     findings = []
     databases = [r["database_name"] for r in ctx.source.fetch("querystore_databases", DATABASES_SQL)]
     sql = regression_sql(ctx)
     for database in databases:
         try:
-            rows = ctx.source.fetch("querystore_regressions", sql, database=database)
+            findings.extend(check_database(ctx, database, sql))
         except SourceError as exc:
             findings.append(
                 Finding(NAME, "Query Store could not be read in {}".format(database), 10, evidence=[str(exc)])
             )
-            continue
-        findings.extend(regression_finding(database, row) for row in rows)
     return findings

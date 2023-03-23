@@ -34,9 +34,33 @@ class ScoreTests(unittest.TestCase):
         self.assertLessEqual(querystore.regression_score(500.0, 1e6), 95)
 
 
+class ForcedPlanTests(unittest.TestCase):
+    def findings(self):
+        return [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "failures" in f.data]
+
+    def test_failures_are_reported_with_the_reason(self):
+        worst, minor = self.findings()
+        self.assertEqual(worst.data["plan_id"], 55)
+        self.assertEqual(worst.data["reason"], "NO_INDEX")
+        self.assertIn("index the forced plan uses no longer exists", worst.evidence[0])
+        self.assertIn("usp_EmployeeYtd", worst.title)
+        self.assertGreater(worst.score, minor.score)
+
+    def test_unknown_reason(self):
+        row = {"plan_id": 1, "query_id": 2, "force_failure_count": 1, "last_force_failure_reason_desc": "BRAND_NEW",
+               "object_name": None, "query_sql_text": "SELECT 1"}
+        finding = querystore.force_failure_finding("Sales", row)
+        self.assertIn("BRAND_NEW", finding.evidence[0])
+
+    def test_score_is_capped(self):
+        row = {"plan_id": 1, "query_id": 2, "force_failure_count": 100000, "last_force_failure_reason_desc": "NO_PLAN",
+               "object_name": None, "query_sql_text": "SELECT 1"}
+        self.assertEqual(querystore.force_failure_finding("Sales", row).score, 80)
+
+
 class RunTests(unittest.TestCase):
     def test_incident(self):
-        findings = querystore.run(Context(FixtureSource(FIXTURES)))
+        findings = [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "ratio" in f.data]
         self.assertEqual([f.data["query_id"] for f in findings], [4412, 5120])
         worst = findings[0]
         self.assertEqual(worst.data["ratio"], 3.82)
@@ -53,7 +77,7 @@ class RunTests(unittest.TestCase):
                 return super().fetch(name, sql, params, database)
 
         findings = querystore.run(Context(Flaky(FIXTURES)))
-        self.assertEqual(len(findings), 3)
+        self.assertEqual(len(findings), 5)
         self.assertEqual(findings[-1].title, "Query Store could not be read in ReportsDB")
 
     def test_long_text_is_shortened(self):

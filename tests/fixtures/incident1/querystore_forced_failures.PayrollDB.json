@@ -1,0 +1,18 @@
+[
+  {
+    "plan_id": 55,
+    "query_id": 3301,
+    "force_failure_count": 214,
+    "last_force_failure_reason_desc": "NO_INDEX",
+    "object_name": "usp_EmployeeYtd",
+    "query_sql_text": "SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1"
+  },
+  {
+    "plan_id": 71,
+    "query_id": 3390,
+    "force_failure_count": 3,
+    "last_force_failure_reason_desc": "GENERAL_FAILURE",
+    "object_name": null,
+    "query_sql_text": "SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC"
+  }
+]
