@@ -34,6 +34,10 @@ class CliTests(unittest.TestCase):
         checks = {f["check"] for f in json.loads(text)["findings"]}
         self.assertEqual(checks, {"waits", "blocking", "querystore", "tempdb", "vlf", "agent", "cpu"})
 
+    def test_markdown_format(self):
+        _, text = self.run_cli("-f", "markdown", "--only", "vlf")
+        self.assertTrue(text.startswith("### sqltriage report for localhost"))
+
     def test_tree_is_not_bulleted(self):
         _, text = self.run_cli("--only", "blocking")
         self.assertIn("      spid 57 [sleeping]", text)
