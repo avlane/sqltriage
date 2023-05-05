@@ -1,0 +1,11 @@
+[
+  {
+    "server_name": "SQLPROD01",
+    "product_version": "15.0.4298.1",
+    "major_version": 15,
+    "edition": "Enterprise Edition (64-bit)",
+    "is_hadr_enabled": 1,
+    "sqlserver_start_time": "2023-03-02T03:12:44",
+    "cpu_count": 16
+  }
+]

@@ -34,6 +34,16 @@ class CliTests(unittest.TestCase):
         checks = {f["check"] for f in json.loads(text)["findings"]}
         self.assertEqual(checks, {"waits", "blocking", "querystore", "tempdb", "vlf", "agent", "cpu"})
 
+    def test_json_has_schema_and_instance(self):
+        _, text = self.run_cli("-f", "json", "--only", "vlf")
+        data = json.loads(text)
+        self.assertEqual(data["schema_version"], 1)
+        self.assertEqual(data["instance"]["product_name"], "SQL Server 2019")
+
+    def test_text_header_names_the_version(self):
+        _, text = self.run_cli("--only", "vlf")
+        self.assertIn("SQL Server 2019 15.0.4298.1", text.splitlines()[1])
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

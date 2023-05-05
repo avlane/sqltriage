@@ -1,11 +1,13 @@
 """Run the checks and rank what they found."""
 import datetime
 
+from . import instance
 from .checks import CHECKS
 
 
 class Report:
-    def __init__(self, server, findings, errors, generated_at):
+    def __init__(self, server, findings, errors, generated_at, instance=None):
+        self.instance = instance
         self.server = server
         self.findings = findings
         self.errors = errors
@@ -31,4 +33,4 @@ def build_report(ctx, server, names=None, now=None):
             findings.extend(CHECKS[name].run(ctx))
         except Exception as exc:  # one broken check must not sink the report
             errors.append("{}: {}".format(name, exc))
-    return Report(server, rank(findings), errors, now or datetime.datetime.now())
+    return Report(server, rank(findings), errors, now or datetime.datetime.now(), instance.load(ctx.source))

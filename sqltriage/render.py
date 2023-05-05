@@ -1,6 +1,7 @@
 """Turn a Report into text, JSON or Markdown."""
 import json
 
+from . import SCHEMA_VERSION, __version__, instance
 from .models import severity_for
 
 
@@ -11,8 +12,10 @@ def _fmt_time(value):
 def to_text(report):
     lines = [
         "sqltriage report for {} at {}".format(report.server, _fmt_time(report.generated_at)),
-        "",
     ]
+    if instance.summary(report.instance):
+        lines.append(instance.summary(report.instance))
+    lines.append("")
     if not report.findings:
         lines.append("Nothing to report.")
     for number, f in enumerate(report.findings, 1):
@@ -34,7 +37,10 @@ def to_text(report):
 
 def to_dict(report):
     return {
+        "schema_version": SCHEMA_VERSION,
+        "tool": "sqltriage " + __version__,
         "server": report.server,
+        "instance": report.instance,
         "generated_at": _fmt_time(report.generated_at),
         "findings": [
             {
@@ -66,6 +72,9 @@ def to_markdown(report):
         "_Generated {}_".format(_fmt_time(report.generated_at)),
         "",
     ]
+    if instance.summary(report.instance):
+        lines.insert(3, "_{}_".format(instance.summary(report.instance)))
+        lines.insert(4, "")
     if not report.findings:
         lines.append("Nothing to report.")
     else:
