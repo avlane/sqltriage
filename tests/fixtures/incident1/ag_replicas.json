@@ -1,0 +1,44 @@
+[
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD01",
+    "role_desc": "PRIMARY",
+    "operational_state_desc": "ONLINE",
+    "connected_state_desc": "CONNECTED",
+    "recovery_health_desc": "ONLINE",
+    "synchronization_health_desc": "HEALTHY",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "last_connect_error_number": null,
+    "last_connect_error_description": null,
+    "last_connect_error_timestamp": null
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD02",
+    "role_desc": "SECONDARY",
+    "operational_state_desc": "ONLINE",
+    "connected_state_desc": "CONNECTED",
+    "recovery_health_desc": "ONLINE",
+    "synchronization_health_desc": "HEALTHY",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "last_connect_error_number": null,
+    "last_connect_error_description": null,
+    "last_connect_error_timestamp": null
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLDR02",
+    "role_desc": "SECONDARY",
+    "operational_state_desc": "ONLINE",
+    "connected_state_desc": "DISCONNECTED",
+    "recovery_health_desc": null,
+    "synchronization_health_desc": "NOT_HEALTHY",
+    "availability_mode_desc": "ASYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "MANUAL",
+    "last_connect_error_number": 10060,
+    "last_connect_error_description": "A connection attempt failed because the connected party did not properly respond after a period of time.",
+    "last_connect_error_timestamp": "2023-03-14T09:02:11"
+  }
+]

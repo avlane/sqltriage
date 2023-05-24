@@ -73,7 +73,7 @@ def to_markdown(report):
         "",
     ]
     if instance.summary(report.instance):
-        lines.insert(3, "_{}_".format(instance.summary(report.instance)))
+        lines.insert(3, "{}".format(instance.summary(report.instance)))
         lines.insert(4, "")
     if not report.findings:
         lines.append("Nothing to report.")

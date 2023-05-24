@@ -32,7 +32,7 @@ class CliTests(unittest.TestCase):
     def test_every_check_contributes(self):
         code, text = self.run_cli("-f", "json", "-n", "50")
         checks = {f["check"] for f in json.loads(text)["findings"]}
-        self.assertEqual(checks, {"waits", "blocking", "querystore", "tempdb", "vlf", "agent", "cpu"})
+        self.assertEqual(checks, {"waits", "blocking", "querystore", "tempdb", "vlf", "agent", "ag", "cpu"})
 
     def test_json_has_schema_and_instance(self):
         _, text = self.run_cli("-f", "json", "--only", "vlf")
