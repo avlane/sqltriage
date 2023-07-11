@@ -4,6 +4,7 @@ import os
 import sys
 
 from . import __version__
+from . import config
 from .checks import CHECKS
 from .connect import build_connection_string
 from .context import Context
@@ -18,6 +19,7 @@ def build_parser():
         description="Ranked triage report for a SQL Server incident.",
     )
     parser.add_argument("--version", action="version", version="sqltriage " + __version__)
+    parser.add_argument("--config", metavar="FILE", help="TOML settings (default: ./sqltriage.toml, then ~/.config/sqltriage.toml)")
     parser.add_argument("-S", "--server", default="localhost", help="instance to connect to")
     parser.add_argument("-d", "--database", default="master", help="initial database")
     parser.add_argument("-U", "--user", help="SQL login (default is a trusted connection)")
@@ -45,7 +47,18 @@ def connection_string(args):
 
 def main(argv=None, out=None):
     out = out or sys.stdout
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    options = {}
+    path = config.find(parser.parse_known_args(argv)[0].config)
+    if path:
+        try:
+            settings = config.load(path)
+        except config.ConfigError as exc:
+            sys.stderr.write("{}\n".format(exc))
+            return 2
+        parser.set_defaults(**config.argument_defaults(settings))
+        options = config.context_options(settings)
+    args = parser.parse_args(argv)
     names = None
     if args.only:
         names = [n.strip() for n in args.only.split(",") if n.strip()]
@@ -57,7 +70,7 @@ def main(argv=None, out=None):
         source = FixtureSource(args.fixtures)
     else:
         source = PyodbcSource(connection_string(args))
-    ctx = Context(source, interval=args.interval, top=args.top)
+    ctx = Context(source, interval=args.interval, top=args.top, options=options)
     if args.fixtures:
         ctx.sleep = lambda seconds: None  # recorded samples are already apart in time
     try:

@@ -14,9 +14,10 @@ It only reads. Everything it runs is a `SELECT` against DMVs and system views.
 | `blocking` | blocked sessions as a tree, with the head blocker's input buffer       |
 | `tempdb`   | PAGELATCH waits on PFS / GAM / SGAM pages in tempdb                    |
 | `vlf`      | VLF counts (`sys.dm_db_log_info`) and `log_reuse_wait_desc`            |
+| `querystore` | regressed queries (recent vs baseline) and forced plan failures      |
+| `agent`    | failed jobs in the last day and jobs running far past their usual time |
+| `ag`       | replica connection and sync health, send/redo queues, lag             |
 | `cpu`      | runnable queue per scheduler and signal waits                          |
-
-Query Store, Agent jobs and availability groups are planned.
 
 ## Usage
 
@@ -32,6 +33,28 @@ ODBC Driver 18 encrypts by default. If the instance has a self-signed
 certificate use `--trust-server-cert`; `--no-encrypt` turns encryption off.
 
 The login needs `VIEW SERVER STATE` and `VIEW ANY DEFINITION`.
+
+## Configuration file
+
+Settings can live in `sqltriage.toml` (current directory) or
+`~/.config/sqltriage.toml`, or any file named with `--config`. Flags override the
+file. See `sqltriage/config.py` for every key; for example:
+
+    [connection]
+    server = "SQLPROD01"
+    trust_server_cert = true
+
+    [sample]
+    interval = 15
+
+    [agent]
+    hours = 12
+
+    [querystore]
+    min_execs = 20
+    ratio = 2.5
+
+Python 3.11 or newer is needed (the config reader is `tomllib`).
 
 ## Trying it without a server
 
