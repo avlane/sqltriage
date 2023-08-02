@@ -54,13 +54,37 @@ def compute_delta(before, after):
     return deltas
 
 
+def was_reset(before, after):
+    """True if the counters went backwards between two snapshots.
+
+    That happens when the instance restarts or someone runs
+    DBCC SQLPERF('sys.dm_os_wait_stats', CLEAR).  Wait types vanish from the
+    second snapshot or their totals shrink; a delta of those is meaningless.
+    """
+    if set(before) - set(after):
+        return True
+    for wait_type, now in after.items():
+        then = before.get(wait_type)
+        if then and (
+            now["waiting_tasks_count"] < then["waiting_tasks_count"] or now["wait_time_ms"] < then["wait_time_ms"]
+        ):
+            return True
+    return False
+
+
 def sample(ctx):
-    """Take the two snapshots once per run and share the result."""
+    """Take the two snapshots once per run and share the result.
+
+    If the counters were reset in between, the delta is empty and
+    ``ctx.cache["waits_reset"]`` is set so ``run`` can say why.
+    """
     if "waits" not in ctx.cache:
         before = snapshot(ctx)
         ctx.sleep(ctx.interval)
         after = snapshot(ctx)
-        ctx.cache["waits"] = compute_delta(before, after)
+        reset = was_reset(before, after)
+        ctx.cache["waits_reset"] = reset
+        ctx.cache["waits"] = [] if reset else compute_delta(before, after)
     return ctx.cache["waits"]
 
 
@@ -79,6 +103,16 @@ def score_wait(delta, share, interval_ms):
 
 def run(ctx):
     meaningful = significant(sample(ctx))
+    if ctx.cache.get("waits_reset"):
+        return [
+            Finding(
+                NAME,
+                "Wait statistics were reset during the sample",
+                10,
+                detail="The wait counters went backwards, so the instance restarted or they were cleared.",
+                advice=["Run sqltriage again; if the instance restarted, check the error log for why."],
+            )
+        ]
     if not meaningful:
         return [Finding(NAME, "No significant waits in the sample", 0)]
     total = sum(d.wait_ms for d in meaningful)

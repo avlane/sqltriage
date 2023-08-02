@@ -41,6 +41,43 @@ class DeltaTests(unittest.TestCase):
         self.assertEqual([d.wait_type for d in waits.compute_delta(before, after)], ["B", "C", "A"])
 
 
+class ResetTests(unittest.TestCase):
+    def test_counters_going_backwards(self):
+        before = {"WRITELOG": row("WRITELOG", 100, 500)}
+        after = {"WRITELOG": row("WRITELOG", 3, 20)}
+        self.assertTrue(waits.was_reset(before, after))
+
+    def test_wait_type_disappearing(self):
+        before = {"WRITELOG": row("WRITELOG", 100, 500), "LCK_M_X": row("LCK_M_X", 5, 900)}
+        after = {"WRITELOG": row("WRITELOG", 120, 600)}
+        self.assertTrue(waits.was_reset(before, after))
+
+    def test_normal_growth(self):
+        before = {"WRITELOG": row("WRITELOG", 100, 500)}
+        after = {"WRITELOG": row("WRITELOG", 120, 600), "NEW_WAIT": row("NEW_WAIT", 1, 5)}
+        self.assertFalse(waits.was_reset(before, after))
+
+    def test_run_explains_a_reset(self):
+        class Cleared(FixtureSource):
+            calls = 0
+
+            def fetch(self, name, sql, params=(), database=None):
+                Cleared.calls += 1
+                if Cleared.calls == 1:
+                    return [row("WRITELOG", 100, 500)]
+                return [row("WRITELOG", 2, 10)]
+
+        ctx = Context(Cleared(FIXTURES), interval=1, sleep=lambda s: None)
+        (finding,) = waits.run(ctx)
+        self.assertEqual(finding.title, "Wait statistics were reset during the sample")
+        self.assertEqual(finding.score, 10)
+
+    def test_fixture_sample_is_not_a_reset(self):
+        ctx = Context(FixtureSource(FIXTURES), interval=10, sleep=lambda s: None)
+        waits.sample(ctx)
+        self.assertFalse(ctx.cache["waits_reset"])
+
+
 class SampleTests(unittest.TestCase):
     def make_ctx(self):
         slept = []
