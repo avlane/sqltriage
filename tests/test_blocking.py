@@ -50,6 +50,45 @@ class ChainTests(unittest.TestCase):
         self.assertIn("KEY: 5:1 (abc)", lines[2])
 
 
+class CycleTests(unittest.TestCase):
+    def ring(self):
+        return [
+            session(10, 12, 3000, wait_type="LCK_M_X"),
+            session(11, 10, 9000, wait_type="LCK_M_S"),
+            session(12, 11, 1000, wait_type="LCK_M_U"),
+        ]
+
+    def test_ring_is_not_lost(self):
+        (head,) = blocking.build_chains(self.ring())
+        self.assertTrue(head.cycle)
+        self.assertEqual(head.session_id, 11)  # waited longest
+        self.assertEqual(sorted(n.session_id for n in head.descendants()), [10, 12])
+
+    def test_tree_stops_where_the_ring_closes(self):
+        (head,) = blocking.build_chains(self.ring())
+        lines = blocking.tree_lines(head)
+        self.assertIn("<- blocking cycle starts here", lines[0])
+        self.assertTrue(any("the cycle closes" in line for line in lines))
+        self.assertLess(len(lines), 10)
+
+    def test_chain_with_a_ring_hanging_off_a_head(self):
+        rows = [session(1), session(2, 1, 100)] + [
+            session(10, 12, 3000), session(11, 10, 9000), session(12, 11, 1000), session(13, 12, 500)
+        ]
+        heads = blocking.build_chains(rows)
+        self.assertEqual(sorted(h.session_id for h in heads), [1, 11])
+
+    def test_finding_title(self):
+        class Ring(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "blocking_sessions":
+                    return self.ring()
+                raise SourceError("none")
+
+        (finding,) = blocking.run(Context(Ring(FIXTURES)))
+        self.assertEqual(finding.title, "Blocking: 3 sessions are blocking each other in a cycle")
+
+
 class RunTests(unittest.TestCase):
     def test_incident_fixture(self):
         findings = blocking.run(Context(FixtureSource(FIXTURES)))

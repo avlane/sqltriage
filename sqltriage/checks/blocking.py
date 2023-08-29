@@ -64,12 +64,18 @@ class Node:
         self.open_tran = row.get("open_transaction_count") or 0
         self.sql_text = row.get("sql_text")
         self.children = []
+        self.cycle = False  # True for the node chosen to start a blocking cycle
 
     def descendants(self):
+        """Every session blocked, directly or not, by this one (cycle safe)."""
         found = []
+        seen = {self.session_id}
         stack = list(self.children)
         while stack:
             node = stack.pop()
+            if node.session_id in seen:
+                continue
+            seen.add(node.session_id)
             found.append(node)
             stack.extend(node.children)
         return found
@@ -84,6 +90,22 @@ def build_chains(rows):
                 nodes[node.blocker] = Node(node.blocker)
             nodes[node.blocker].children.append(node)
     heads = [n for n in nodes.values() if n.blocker is None and (n.children or n.system_blocker)]
+    # Sessions that block each other in a ring have a blocker each, so none of
+    # them is a head and they would vanish.  Start a chain at the session that
+    # has waited longest in each ring.
+    reached = set()
+    for head in heads:
+        reached.add(head.session_id)
+        reached.update(n.session_id for n in head.descendants())
+    while True:
+        lost = [n for n in nodes.values() if n.session_id not in reached]
+        if not lost:
+            break
+        start = max(lost, key=lambda n: (n.wait_ms, -n.session_id))
+        start.cycle = True
+        heads.append(start)
+        reached.add(start.session_id)
+        reached.update(n.session_id for n in start.descendants())
     for node in nodes.values():
         node.children.sort(key=lambda c: -c.wait_ms)
     heads.sort(key=lambda h: (-len(h.descendants()), h.session_id))
@@ -108,17 +130,21 @@ def describe(node):
 
 
 def tree_lines(head):
-    lines = [describe(head) + "  <- head blocker"]
+    lines = [describe(head) + ("  <- blocking cycle starts here" if head.cycle else "  <- head blocker")]
 
-    def walk(node, prefix):
+    def walk(node, prefix, path):
         for index, child in enumerate(node.children):
             last = index == len(node.children) - 1
-            lines.append("{}{}- {}".format(prefix, "`" if last else "|", describe(child)))
+            branch = "{}{}- ".format(prefix, "`" if last else "|")
+            if child.session_id in path:
+                lines.append("{}(back to spid {}: the cycle closes)".format(branch, child.session_id))
+                continue
+            lines.append(branch + describe(child))
             if child.wait_resource:
                 lines.append("{}{}    {}".format(prefix, " " if last else "|", child.wait_resource))
-            walk(child, prefix + ("  " if last else "| "))
+            walk(child, prefix + ("  " if last else "| "), path | {child.session_id})
 
-    walk(head, "")
+    walk(head, "", {head.session_id})
     return lines
 
 
@@ -155,7 +181,10 @@ def run(ctx):
     for head in build_chains(rows):
         victims = head.descendants()
         longest = max([v.wait_ms for v in victims] or [0]) / 1000.0
-        if victims:
+        if head.cycle:
+            title = "Blocking: {} sessions are blocking each other in a cycle".format(len(victims) + 1)
+            detail = "Longest wait {:.0f}s; nothing in the ring can proceed.".format(longest)
+        elif victims:
             title = "Blocking: spid {} is blocking {} session(s)".format(head.session_id, len(victims))
             detail = "Longest wait {:.0f}s.".format(longest)
         else:
@@ -173,7 +202,11 @@ def run(ctx):
                 detail=detail,
                 evidence=evidence,
                 block=tree_lines(head),
-                advice=["Find out why spid {} is not finishing; KILL is the last resort.".format(head.session_id)]
+                advice=(
+                    ["A ring of waits that does not clear is not a lock deadlock; look at the wait types involved."]
+                    if head.cycle
+                    else ["Find out why spid {} is not finishing; KILL is the last resort.".format(head.session_id)]
+                )
                 if victims
                 else [],
                 data={
