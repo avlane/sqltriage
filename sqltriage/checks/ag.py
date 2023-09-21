@@ -2,6 +2,7 @@
 from collections import OrderedDict
 
 from ..models import Finding
+from ..scoring import step_score
 
 NAME = "ag"
 
@@ -80,13 +81,6 @@ def replica_problems(row):
     return problems
 
 
-def _level(value, levels):
-    for floor, score in levels:
-        if value is not None and value >= floor:
-            return score
-    return 0
-
-
 def _size(kb):
     if kb >= 1048576:
         return "{:.1f} GB".format(kb / 1048576.0)
@@ -109,18 +103,18 @@ def database_problems(row):
     if row.get("is_suspended"):
         problems.append((75, "data movement is suspended ({})".format(row.get("suspend_reason_desc"))))
     send = row.get("log_send_queue_size") or 0
-    score = _level(send, QUEUE_LEVELS)
+    score = step_score(send, QUEUE_LEVELS)
     if score:
         text = "log send queue {}".format(_size(send))
         eta = _catch_up(send, row.get("log_send_rate"))
         problems.append((score, text + (", " + eta if eta else "")))
     redo = row.get("redo_queue_size") or 0
-    score = _level(redo, QUEUE_LEVELS)
+    score = step_score(redo, QUEUE_LEVELS)
     if score:
         text = "redo queue {}".format(_size(redo))
         eta = _catch_up(redo, row.get("redo_rate"))
         problems.append((score - 5, text + (", " + eta if eta else "")))
-    score = _level(row.get("secondary_lag_seconds"), LAG_LEVELS)
+    score = step_score(row.get("secondary_lag_seconds"), LAG_LEVELS)
     if score:
         problems.append((score, "secondary is {} s behind".format(row["secondary_lag_seconds"])))
     return problems

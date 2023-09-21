@@ -6,6 +6,7 @@ have everything they need except CPU.  And the share of wait time that is
 tasks queue for a CPU in general.
 """
 from ..models import Finding
+from ..scoring import clamp, step_score
 from . import waits
 from .. import waitinfo
 
@@ -31,13 +32,6 @@ RUNNABLE_LEVELS = [(5, 85), (3, 70), (2, 55), (1, 40)]
 SIGNAL_LEVELS = [(25, 75), (15, 50)]
 
 
-def _level(value, levels):
-    for floor, score in levels:
-        if value >= floor:
-            return score
-    return 0
-
-
 def signal_wait_pct(deltas):
     total = sum(d.wait_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
     signal = sum(d.signal_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
@@ -55,14 +49,14 @@ def run(ctx):
     queued = sum(1 for r in online if r["work_queue_count"] > 0)
     signal = signal_wait_pct(waits.sample(ctx))
 
-    runnable_score = _level(average, RUNNABLE_LEVELS)
-    signal_score = _level(signal, SIGNAL_LEVELS)
+    runnable_score = step_score(average, RUNNABLE_LEVELS)
+    signal_score = step_score(signal, SIGNAL_LEVELS)
     score = max(runnable_score, signal_score)
     if runnable_score and signal_score:
         score += 5
     if queued:
         score += 5
-    score = min(score, 95)
+    score = clamp(score, high=95)
 
     evidence = [
         "{} online schedulers, runnable queue average {:.1f}, maximum {}".format(len(online), average, max(runnable)),

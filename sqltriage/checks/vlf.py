@@ -1,5 +1,6 @@
 """Virtual log file counts and the log reuse wait for every online database."""
 from ..models import Finding
+from ..scoring import step_score
 
 NAME = "vlf"
 
@@ -50,10 +51,7 @@ REUSE_WAIT = {
 
 
 def vlf_score(count):
-    for floor, score in VLF_LEVELS:
-        if count >= floor:
-            return score
-    return 0
+    return step_score(count, VLF_LEVELS)
 
 
 def run(ctx):

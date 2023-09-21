@@ -3,6 +3,7 @@ import datetime
 
 from . import instance
 from .checks import CHECKS
+from .scoring import rank
 
 
 class Report:
@@ -14,16 +15,6 @@ class Report:
         self.generated_at = generated_at
 
 
-def rank(findings):
-    order = list(CHECKS)
-
-    def key(f):
-        position = order.index(f.check) if f.check in order else len(order)
-        return (-f.score, position, f.title)
-
-    return sorted(findings, key=key)
-
-
 def build_report(ctx, server, names=None, now=None):
     names = list(names or CHECKS)
     findings = []
@@ -33,4 +24,4 @@ def build_report(ctx, server, names=None, now=None):
             findings.extend(CHECKS[name].run(ctx))
         except Exception as exc:  # one broken check must not sink the report
             errors.append("{}: {}".format(name, exc))
-    return Report(server, rank(findings), errors, now or datetime.datetime.now(), instance.load(ctx.source))
+    return Report(server, rank(findings, CHECKS), errors, now or datetime.datetime.now(), instance.load(ctx.source))
