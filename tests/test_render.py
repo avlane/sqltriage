@@ -40,6 +40,20 @@ class TextTests(unittest.TestCase):
         self.assertIn("  - vlf: boom", to_text(sample_report(["vlf: boom"])))
 
 
+class FilterTests(unittest.TestCase):
+    def test_filter_report(self):
+        from sqltriage.report import filter_report
+
+        filtered = filter_report(sample_report(), "high")
+        self.assertEqual([f.check for f in filtered.findings], ["blocking"])
+        self.assertEqual(filtered.hidden, 1)
+        self.assertIn("(1 lower ranked finding(s) hidden)", to_text(filtered))
+        self.assertIn("_1 lower ranked finding(s) hidden._", to_markdown(filtered))
+
+    def test_nothing_hidden_by_default(self):
+        self.assertNotIn("hidden", to_text(sample_report()))
+
+
 class JsonTests(unittest.TestCase):
     def test_round_trip(self):
         data = json.loads(to_json(sample_report()))

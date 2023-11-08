@@ -9,7 +9,8 @@ from .checks import CHECKS
 from .connect import build_connection_string
 from .context import Context
 from .render import FORMATS
-from .report import build_report
+from .models import LEVELS
+from .report import build_report, filter_report
 from .source import FixtureSource, PyodbcSource
 
 
@@ -30,6 +31,8 @@ def build_parser():
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
     parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
+    parser.add_argument("--min-severity", choices=[label for _, label in reversed(LEVELS)], default="info",
+                        help="hide findings ranked below this severity")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -77,5 +80,7 @@ def main(argv=None, out=None):
         report = build_report(ctx, args.server, names)
     finally:
         source.close()
+    if args.min_severity != "info":
+        report = filter_report(report, args.min_severity)
     out.write(FORMATS[args.format](report))
     return 0

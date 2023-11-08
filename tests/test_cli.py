@@ -44,6 +44,18 @@ class CliTests(unittest.TestCase):
         _, text = self.run_cli("--only", "vlf")
         self.assertIn("SQL Server 2019 15.0.4298.1", text.splitlines()[1])
 
+    def test_min_severity_hides_the_rest(self):
+        _, text = self.run_cli("--min-severity", "high")
+        self.assertIn("[CRITICAL", text)
+        self.assertNotIn("[MEDIUM", text)
+        self.assertRegex(text, r"\(\d+ lower ranked finding\(s\) hidden\)")
+
+    def test_min_severity_in_json(self):
+        _, text = self.run_cli("-f", "json", "--min-severity", "critical")
+        data = json.loads(text)
+        self.assertTrue(all(f["severity"] == "critical" for f in data["findings"]))
+        self.assertGreater(data["hidden"], 0)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

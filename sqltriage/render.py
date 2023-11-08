@@ -28,6 +28,9 @@ def to_text(report):
             lines.append("      - " + item)
         for item in f.advice:
             lines.append("      > " + item)
+    if report.hidden:
+        lines.append("")
+        lines.append("({} lower ranked finding(s) hidden)".format(report.hidden))
     if report.errors:
         lines.append("")
         lines.append("Checks that failed:")
@@ -56,6 +59,7 @@ def to_dict(report):
             }
             for f in report.findings
         ],
+        "hidden": report.hidden,
         "errors": report.errors,
     }
 
@@ -100,6 +104,9 @@ def to_markdown(report):
                 lines.append("")
                 lines.append("Next steps:")
                 lines.extend("1. " + item for item in f.advice)
+    if report.hidden:
+        lines.append("")
+        lines.append("_{} lower ranked finding(s) hidden._".format(report.hidden))
     if report.errors:
         lines.append("")
         lines.append("**Checks that failed**")
