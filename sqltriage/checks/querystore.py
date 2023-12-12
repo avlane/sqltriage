@@ -234,7 +234,11 @@ def check_database(ctx, database, sql):
 
 def run(ctx):
     findings = []
-    databases = [r["database_name"] for r in ctx.source.fetch("querystore_databases", DATABASES_SQL)]
+    databases = [
+        r["database_name"]
+        for r in ctx.source.fetch("querystore_databases", DATABASES_SQL)
+        if ctx.wants_database(r["database_name"])
+    ]
     sql = regression_sql(ctx)
     for database in databases:
         try:

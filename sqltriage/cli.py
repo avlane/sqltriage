@@ -33,6 +33,8 @@ def build_parser():
     parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
     parser.add_argument("--min-severity", choices=[label for _, label in reversed(LEVELS)], default="info",
                         help="hide findings ranked below this severity")
+    parser.add_argument("--databases", help="comma separated databases to look at (default: all)")
+    parser.add_argument("--exclude-databases", help="comma separated databases to leave out")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -73,6 +75,11 @@ def main(argv=None, out=None):
         source = FixtureSource(args.fixtures)
     else:
         source = PyodbcSource(connection_string(args))
+    options = dict(options)
+    for name in ("databases", "exclude_databases"):
+        value = getattr(args, name)
+        if value:
+            options[name] = [d.strip() for d in value.split(",") if d.strip()]
     ctx = Context(source, interval=args.interval, top=args.top, options=options)
     if args.fixtures:
         ctx.sleep = lambda seconds: None  # recorded samples are already apart in time

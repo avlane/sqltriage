@@ -48,6 +48,10 @@ class ConfigFileTests(unittest.TestCase):
             {"server": "SQLPROD01", "trust_server_cert": True, "interval": 15, "top": 8, "only": "waits,blocking"},
         )
 
+    def test_database_lists(self):
+        data = config.load(self.write('[checks]\ndatabases = ["A", "B"]\nexclude_databases = ["tempdb"]\n'))
+        self.assertEqual(config.argument_defaults(data), {"databases": "A,B", "exclude_databases": "tempdb"})
+
     def test_context_options(self):
         data = config.load(self.write(SAMPLE))
         self.assertEqual(

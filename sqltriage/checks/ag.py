@@ -123,6 +123,8 @@ def database_problems(row):
 def database_findings(ctx):
     findings = []
     for row in ctx.source.fetch("ag_databases", DATABASE_SQL):
+        if not ctx.wants_database(row["database_name"]):
+            continue
         problems = database_problems(row)
         if not problems:
             continue

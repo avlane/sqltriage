@@ -56,6 +56,16 @@ class CliTests(unittest.TestCase):
         self.assertTrue(all(f["severity"] == "critical" for f in data["findings"]))
         self.assertGreater(data["hidden"], 0)
 
+    def test_database_filter(self):
+        _, text = self.run_cli("--only", "vlf", "--databases", "ReportsDB,Staging")
+        self.assertIn("Log: ReportsDB", text)
+        self.assertNotIn("PayrollDB", text)
+
+    def test_exclude_databases(self):
+        _, text = self.run_cli("--only", "vlf,querystore", "--exclude-databases", "payrolldb")
+        self.assertNotIn("PayrollDB", text)
+        self.assertIn("ReportsDB", text)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

@@ -57,6 +57,8 @@ def vlf_score(count):
 def run(ctx):
     findings = []
     for row in ctx.source.fetch("vlf_counts", SQL):
+        if not ctx.wants_database(row["database_name"]):
+            continue
         count = int(row["vlf_count"])
         wait = row.get("log_reuse_wait_desc") or "NOTHING"
         score = vlf_score(count)

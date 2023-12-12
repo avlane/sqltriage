@@ -83,7 +83,7 @@ def load(path):
 
 
 def check_keys(data, path):
-    known = {"checks": {"only"}}
+    known = {"checks": {"only", "databases", "exclude_databases"}}
     for section, keys in list(ARGUMENT_KEYS.items()) + list(OPTION_KEYS.items()):
         known[section] = set(keys)
     for section, values in data.items():
@@ -102,9 +102,10 @@ def argument_defaults(data):
         for key, dest in keys.items():
             if key in data.get(section, {}):
                 defaults[dest] = data[section][key]
-    only = data.get("checks", {}).get("only")
-    if only is not None:
-        defaults["only"] = ",".join(only)
+    for key in ("only", "databases", "exclude_databases"):
+        value = data.get("checks", {}).get(key)
+        if value is not None:
+            defaults[key] = ",".join(value)
     return defaults
 
 
