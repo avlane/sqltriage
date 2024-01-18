@@ -123,6 +123,23 @@ class ExplainTests(unittest.TestCase):
         self.assertEqual(waitinfo.explain("PAGEIOLATCH_EX").category, "io")
         self.assertEqual(waitinfo.explain("SOMETHING_NEW"), waitinfo.UNKNOWN)
 
+    def test_newer_waits_are_explained(self):
+        from sqltriage import waitinfo
+
+        for name, category in [
+            ("RESOURCE_SEMAPHORE_QUERY_COMPILE", "memory"),
+            ("PREEMPTIVE_OS_WRITEFILEGATHER", "io"),
+            ("HADR_THROTTLE_LOG_RATE_SEND_RECV_QUEUE_SIZE", "ag"),
+            ("TRANSACTION_MUTEX", "locking"),
+        ]:
+            self.assertEqual(waitinfo.explain(name).category, category, name)
+
+    def test_cxconsumer_is_idle(self):
+        from sqltriage import waitinfo
+
+        self.assertTrue(waitinfo.is_benign("CXCONSUMER"))
+        self.assertFalse(waitinfo.is_benign("CXPACKET"))
+
     def test_benign(self):
         from sqltriage import waitinfo
 

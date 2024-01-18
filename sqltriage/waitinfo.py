@@ -7,7 +7,7 @@ BENIGN = frozenset(
     """
     BROKER_EVENTHANDLER BROKER_RECEIVE_WAITFOR BROKER_TASK_STOP BROKER_TO_FLUSH
     BROKER_TRANSMITTER CHECKPOINT_QUEUE CHKPT CLR_AUTO_EVENT CLR_MANUAL_EVENT
-    CLR_SEMAPHORE DBMIRROR_DBM_EVENT DBMIRROR_EVENTS_QUEUE DBMIRROR_WORKER_QUEUE
+    CLR_SEMAPHORE CXCONSUMER DBMIRROR_DBM_EVENT DBMIRROR_EVENTS_QUEUE DBMIRROR_WORKER_QUEUE
     DBMIRRORING_CMD DIRTY_PAGE_POLL DISPATCHER_QUEUE_SEMAPHORE
     FT_IFTS_SCHEDULER_IDLE_WAIT FT_IFTSHC_MUTEX HADR_CLUSAPI_CALL
     HADR_FILESTREAM_IOMGR_IOCOMPLETION HADR_LOGCAPTURE_WAIT
@@ -128,6 +128,66 @@ WAIT_INFO = {
         20,
         "Waiting for space in the log buffer, usually because log writes cannot keep up.",
         ["Treat like WRITELOG: look at log file latency."],
+    ),
+    "RESOURCE_SEMAPHORE_QUERY_COMPILE": Info(
+        "memory",
+        35,
+        "Compilations are queued because too many are already running.",
+        [
+            "Look for a burst of ad hoc queries or a plan cache that was just flushed.",
+            "Check the compilations/sec counter and optimize for ad hoc workloads.",
+        ],
+    ),
+    "LOG_RATE_GOVERNOR": Info(
+        "log",
+        35,
+        "Log writes are being throttled by a log rate governor (typically Azure SQL Managed Instance).",
+        ["Reduce log generation or move to a service tier with a higher log rate."],
+    ),
+    "WRITE_COMPLETION": Info(
+        "io",
+        20,
+        "Waiting for a data file write to complete, as during checkpoints or a spill.",
+        ["Check write latency on the data files."],
+    ),
+    "PREEMPTIVE_OS_WRITEFILEGATHER": Info(
+        "io",
+        20,
+        "A file is being grown and zero-initialized.",
+        [
+            "Enable instant file initialization for data files (not possible for the log).",
+            "Grow files in larger planned steps rather than many small autogrowths.",
+        ],
+    ),
+    "PREEMPTIVE_OS_FLUSHFILEBUFFERS": Info(
+        "io",
+        20,
+        "Waiting for the operating system to flush file buffers to disk.",
+        ["Usually storage latency during checkpoints or backups."],
+    ),
+    "TRANSACTION_MUTEX": Info(
+        "locking",
+        20,
+        "Several sessions are sharing one transaction (as with MARS or distributed work) and waiting on each other.",
+        ["Check for applications using MARS or enlisting in a distributed transaction."],
+    ),
+    "OLEDB": Info(
+        "client",
+        15,
+        "Waiting on an OLE DB provider call, typically a linked server query.",
+        ["Find the linked server queries (sys.dm_exec_requests with wait_type OLEDB)."],
+    ),
+    "HADR_THROTTLE_LOG_RATE_SEND_RECV_QUEUE_SIZE": Info(
+        "ag",
+        35,
+        "Log generation on the primary is being throttled because a secondary is too far behind.",
+        ["The send or redo queue on a secondary is large; see the availability group section."],
+    ),
+    "HADR_TRANSPORT_FLOW_CONTROL": Info(
+        "ag",
+        30,
+        "Log transport to a secondary is held up by flow control.",
+        ["Check network throughput and the secondary's ability to receive."],
     ),
     "CMEMTHREAD": Info(
         "memory",
