@@ -32,8 +32,26 @@ BENIGN = frozenset(
 )
 
 
+# Families of background waits.  Each release adds a few more names to these
+# (QDS_*, PARALLEL_REDO_*, ...), so match the family rather than only the
+# names we knew about.
+BENIGN_PREFIXES = (
+    "BROKER_",
+    "CLR_",
+    "DBMIRROR",
+    "FT_",
+    "PARALLEL_REDO_",
+    "PWAIT_",
+    "QDS_",
+    "SLEEP_",
+    "SQLTRACE_",
+    "WAIT_XTP_",
+    "XE_",
+)
+
+
 def is_benign(wait_type):
-    return wait_type in BENIGN
+    return wait_type in BENIGN or wait_type.startswith(BENIGN_PREFIXES)
 
 
 # weight: how much a wait of this kind adds to a finding's score (0-50)

@@ -134,6 +134,13 @@ class ExplainTests(unittest.TestCase):
         ]:
             self.assertEqual(waitinfo.explain(name).category, category, name)
 
+    def test_background_families_are_idle(self):
+        from sqltriage import waitinfo
+
+        for name in ("QDS_SOMETHING_NEW", "PARALLEL_REDO_FUTURE_WAIT", "XE_FILE_TARGET_TVF", "SLEEP_BUFFERPOOL_HELPLW"):
+            self.assertTrue(waitinfo.is_benign(name), name)
+        self.assertFalse(waitinfo.is_benign("PAGEIOLATCH_SH"))
+
     def test_cxconsumer_is_idle(self):
         from sqltriage import waitinfo
 
