@@ -66,6 +66,11 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("PayrollDB", text)
         self.assertIn("ReportsDB", text)
 
+    def test_record_needs_a_live_connection(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            code, _ = self.run_cli("--record", "somewhere")
+        self.assertEqual(code, 2)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

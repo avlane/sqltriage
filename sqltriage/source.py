@@ -4,6 +4,8 @@ Every check asks a ``Source`` for rows by name.  The live source runs the SQL
 against a server through pyodbc; the fixture source replays recorded results
 from JSON files so the checks can be tested (and demoed) without a server.
 """
+import datetime
+import decimal
 import json
 import os
 
@@ -111,3 +113,43 @@ class FixtureSource(Source):
                 with open(path, encoding="utf-8") as handle:
                     return json.load(handle)
         raise SourceError("no fixture for {} (database={})".format(name, database))
+
+
+def _jsonable(value):
+    if isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
+        return value.isoformat()
+    if isinstance(value, decimal.Decimal):
+        return float(value)
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).hex()
+    return str(value)
+
+
+class RecordingSource(Source):
+    """Passes queries to ``inner`` and saves every result as a fixture file.
+
+    The first call for a name is written as ``<name>.json`` and later ones as
+    ``<name>.<n>.json``, which is exactly what FixtureSource reads back.  A
+    recording holds real query text, logins and host names: look it over before
+    sharing it.
+    """
+
+    def __init__(self, inner, directory):
+        self.inner = inner
+        self.directory = directory
+        self._calls = {}
+        os.makedirs(directory, exist_ok=True)
+
+    def fetch(self, name, sql, params=(), database=None):
+        rows = self.inner.fetch(name, sql, params, database)
+        key = (name, database)
+        call = self._calls.get(key, 0) + 1
+        self._calls[key] = call
+        stem = name + ("." + database if database else "") + ("." + str(call) if call > 1 else "")
+        with open(os.path.join(self.directory, stem + ".json"), "w", encoding="utf-8") as handle:
+            json.dump(rows, handle, indent=2, default=_jsonable)
+            handle.write("\n")
+        return rows
+
+    def close(self):
+        self.inner.close()

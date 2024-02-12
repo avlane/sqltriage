@@ -11,7 +11,7 @@ from .context import Context
 from .render import FORMATS
 from .models import LEVELS
 from .report import build_report, filter_report
-from .source import FixtureSource, PyodbcSource
+from .source import FixtureSource, PyodbcSource, RecordingSource
 
 
 def build_parser():
@@ -27,6 +27,7 @@ def build_parser():
     parser.add_argument("--driver", help="ODBC driver name (default: newest installed of 18 and 17)")
     parser.add_argument("--no-encrypt", action="store_true", help="connect without encryption")
     parser.add_argument("--trust-server-cert", action="store_true", help="accept a self-signed server certificate")
+    parser.add_argument("--record", metavar="DIR", help="also save every query result to DIR as replayable fixtures")
     parser.add_argument("--fixtures", metavar="DIR", help="replay recorded query results instead of connecting")
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
@@ -71,10 +72,15 @@ def main(argv=None, out=None):
         if unknown:
             sys.stderr.write("unknown check: {}\n".format(", ".join(unknown)))
             return 2
+    if args.fixtures and args.record:
+        sys.stderr.write("--record needs a live connection, not --fixtures\n")
+        return 2
     if args.fixtures:
         source = FixtureSource(args.fixtures)
     else:
         source = PyodbcSource(connection_string(args))
+        if args.record:
+            source = RecordingSource(source, args.record)
     options = dict(options)
     for name in ("databases", "exclude_databases"):
         value = getattr(args, name)

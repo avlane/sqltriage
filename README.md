@@ -34,6 +34,13 @@ certificate use `--trust-server-cert`; `--no-encrypt` turns encryption off.
 
 The login needs `VIEW SERVER STATE` and `VIEW ANY DEFINITION`.
 
+## Recording an incident
+
+`--record DIR` saves every query result to `DIR` while the report runs. The
+files replay with `--fixtures DIR`, so you can look at the same data again later
+or attach it to a ticket. They contain real query text, logins and host names:
+read them before sharing.
+
 ## Configuration file
 
 Settings can live in `sqltriage.toml` (current directory) or

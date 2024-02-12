@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-from sqltriage.source import FixtureSource, PyodbcSource, SourceError, quote_name
+from sqltriage.source import FixtureSource, PyodbcSource, RecordingSource, SourceError, quote_name
 from tests.fakes import FakeConnection
 
 
@@ -81,6 +81,44 @@ class FixtureSourceTests(unittest.TestCase):
     def test_missing_fixture(self):
         with self.assertRaises(SourceError):
             FixtureSource(self.tmp.name).fetch("nope", "")
+
+
+class RecordingSourceTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_recording_replays_through_fixture_source(self):
+        import datetime
+        import decimal
+
+        class Fake(FixtureSource):
+            def __init__(inner):
+                inner.n = 0
+
+            def fetch(inner, name, sql, params=(), database=None):
+                inner.n += 1
+                return [{"n": inner.n, "at": datetime.datetime(2024, 2, 13, 20, 0), "mb": decimal.Decimal("1.5"), "raw": b"\x01\xff"}]
+
+            def close(inner):
+                inner.closed = True
+
+        inner = Fake()
+        rec = RecordingSource(inner, os.path.join(self.tmp.name, "out"))
+        rec.fetch("waits", "SELECT 1")
+        rec.fetch("waits", "SELECT 1")
+        rec.fetch("vlf", "SELECT 2", database="Sales")
+        rec.close()
+        self.assertTrue(inner.closed)
+        self.assertEqual(sorted(os.listdir(os.path.join(self.tmp.name, "out"))), ["vlf.Sales.json", "waits.2.json", "waits.json"])
+        replay = FixtureSource(os.path.join(self.tmp.name, "out"))
+        first = replay.fetch("waits", "")
+        second = replay.fetch("waits", "")
+        self.assertEqual((first[0]["n"], second[0]["n"]), (1, 2))
+        self.assertEqual(first[0]["at"], "2024-02-13T20:00:00")
+        self.assertEqual(first[0]["mb"], 1.5)
+        self.assertEqual(first[0]["raw"], "01ff")
+        self.assertEqual(replay.fetch("vlf", "", database="Sales")[0]["n"], 3)
 
 
 if __name__ == "__main__":
