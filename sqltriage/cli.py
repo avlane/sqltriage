@@ -7,7 +7,7 @@ from . import __version__
 from . import config
 from .checks import CHECKS
 from .connect import build_connection_string
-from .context import Context
+from .context import Context, ManualClock
 from .render import FORMATS
 from .models import LEVELS
 from .report import build_report, filter_report
@@ -88,7 +88,8 @@ def main(argv=None, out=None):
             options[name] = [d.strip() for d in value.split(",") if d.strip()]
     ctx = Context(source, interval=args.interval, top=args.top, options=options)
     if args.fixtures:
-        ctx.sleep = lambda seconds: None  # recorded samples are already apart in time
+        clock = ManualClock()  # recorded samples are already apart in time
+        ctx.sleep, ctx.clock = clock.sleep, clock.now
     try:
         report = build_report(ctx, args.server, names)
     finally:

@@ -6,12 +6,27 @@ from typing import Callable, Dict
 from .source import Source
 
 
+class ManualClock:
+    """A clock that only moves when asked to sleep; for replayed samples and tests."""
+
+    def __init__(self, drift=0.0):
+        self.t = 0.0
+        self.drift = drift  # extra seconds every sleep takes beyond what was asked
+
+    def now(self):
+        return self.t
+
+    def sleep(self, seconds):
+        self.t += seconds + self.drift
+
+
 @dataclass
 class Context:
     source: Source
     interval: float = 10.0
     top: int = 5
     sleep: Callable = time.sleep
+    clock: Callable = time.monotonic
     options: Dict = field(default_factory=dict)
     # results one check wants to share with another (for example the wait delta)
     cache: Dict = field(default_factory=dict)

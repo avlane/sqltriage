@@ -2,7 +2,7 @@ import os
 import unittest
 
 from sqltriage.checks import waits
-from sqltriage.context import Context
+from sqltriage.context import Context, ManualClock
 from sqltriage.source import FixtureSource
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
@@ -76,6 +76,21 @@ class ResetTests(unittest.TestCase):
         ctx = Context(FixtureSource(FIXTURES), interval=10, sleep=lambda s: None)
         waits.sample(ctx)
         self.assertFalse(ctx.cache["waits_reset"])
+
+
+class ElapsedTests(unittest.TestCase):
+    def concurrency_line(self, drift):
+        clock = ManualClock(drift)
+        ctx = Context(FixtureSource(FIXTURES), interval=10, sleep=clock.sleep, clock=clock.now, top=20)
+        finding = [f for f in waits.run(ctx) if f.data["wait_type"] == "LCK_M_X"][0]
+        return finding.evidence[1]
+
+    def test_on_time_sample(self):
+        self.assertEqual(self.concurrency_line(0), "9.2 tasks waiting on average during the sample")
+
+    def test_slow_sample_uses_the_real_elapsed_time(self):
+        # 92000 ms of waiting over 11.5 s rather than 10 s
+        self.assertEqual(self.concurrency_line(1.5), "8.0 tasks waiting on average during the sample")
 
 
 class SampleTests(unittest.TestCase):

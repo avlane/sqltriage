@@ -80,8 +80,11 @@ def sample(ctx):
     """
     if "waits" not in ctx.cache:
         before = snapshot(ctx)
+        started = ctx.clock()
         ctx.sleep(ctx.interval)
         after = snapshot(ctx)
+        # The queries take time too, so rates use what really passed.
+        ctx.cache["waits_elapsed"] = max(ctx.clock() - started, 0.001)
         reset = was_reset(before, after)
         ctx.cache["waits_reset"] = reset
         ctx.cache["waits"] = [] if reset else compute_delta(before, after)
@@ -116,7 +119,7 @@ def run(ctx):
     if not meaningful:
         return [Finding(NAME, "No significant waits in the sample", 0)]
     total = sum(d.wait_ms for d in meaningful)
-    interval_ms = max(ctx.interval, 0.001) * 1000.0
+    interval_ms = ctx.cache.get("waits_elapsed", max(ctx.interval, 0.001)) * 1000.0
     findings = []
     for d in meaningful[: ctx.top]:
         share = 100.0 * d.wait_ms / total
