@@ -25,6 +25,22 @@ FROM sys.dm_os_waiting_tasks AS wt
 WHERE wt.wait_type LIKE 'PAGELATCH[_]%'
   AND wt.resource_description LIKE '2:%';"""
 
+# Current data files (type 0) and their sizes, from tempdb's own catalog view.
+FILES_SQL = """\
+SELECT f.file_id,
+       f.name,
+       f.physical_name,
+       f.size * 8 / 1024 AS size_mb,
+       CASE WHEN f.is_percent_growth = 1 THEN f.growth ELSE f.growth * 8 / 1024 END AS growth_mb,
+       f.is_percent_growth,
+       (SELECT cpu_count FROM sys.dm_os_sys_info) AS cpu_count
+FROM tempdb.sys.database_files AS f
+WHERE f.type = 0
+ORDER BY f.file_id;"""
+
+MAX_RECOMMENDED_FILES = 8
+SIZE_TOLERANCE = 1.1  # largest file may be this much bigger than the smallest
+
 _RESOURCE = re.compile(r"^(\d+):(\d+):(\d+)")
 
 
@@ -58,7 +74,47 @@ def summarize(rows):
     return groups
 
 
+def layout_finding(rows):
+    """Too few data files, or files of different sizes (SQL Server fills them in proportion)."""
+    if not rows:
+        return None
+    sizes = [r["size_mb"] for r in rows]
+    wanted = min(MAX_RECOMMENDED_FILES, int(rows[0]["cpu_count"]))
+    evidence = ["{} data file(s): {}".format(len(rows), ", ".join("{} MB".format(s) for s in sizes))]
+    advice = []
+    score = 0
+    if len(rows) < wanted:
+        score += 35
+        evidence.append("{} logical CPUs, so {} files is the usual starting point".format(rows[0]["cpu_count"], wanted))
+        advice.append("Add data files until there are {}, all the same size.".format(wanted))
+    if min(sizes) and max(sizes) / float(min(sizes)) > SIZE_TOLERANCE:
+        score += 30 if score else 40
+        evidence.append("largest file is {:.1f}x the smallest".format(max(sizes) / float(min(sizes))))
+        advice.append("Resize the files to the same size and growth increment so allocations spread evenly.")
+    if any(r["is_percent_growth"] for r in rows):
+        score += 10
+        evidence.append("at least one file grows by a percentage")
+    if not score:
+        return None
+    return Finding(
+        check=NAME,
+        title="tempdb file layout: {} data file(s), sizes not even".format(len(rows))
+        if min(sizes) and max(sizes) / float(min(sizes)) > SIZE_TOLERANCE
+        else "tempdb file layout: only {} data file(s) for {} CPUs".format(len(rows), rows[0]["cpu_count"]),
+        score=score,
+        evidence=evidence,
+        advice=advice,
+        data={"data_files": len(rows), "cpu_count": rows[0]["cpu_count"], "sizes_mb": sizes},
+    )
+
+
 def run(ctx):
+    layout = layout_finding(ctx.source.fetch("tempdb_files", FILES_SQL))
+    findings = [layout] if layout else []
+    return findings + contention_findings(ctx)
+
+
+def contention_findings(ctx):
     rows = ctx.source.fetch("tempdb_latch_waits", LATCH_SQL)
     groups = summarize(rows)
     if not groups:

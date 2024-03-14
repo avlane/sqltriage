@@ -1,0 +1,38 @@
+[
+  {
+    "file_id": 1,
+    "name": "tempdev",
+    "physical_name": "T:\\TempDB\\tempdb.mdf",
+    "size_mb": 8192,
+    "growth_mb": 64,
+    "is_percent_growth": 0,
+    "cpu_count": 16
+  },
+  {
+    "file_id": 3,
+    "name": "temp2",
+    "physical_name": "T:\\TempDB\\temp2.ndf",
+    "size_mb": 1024,
+    "growth_mb": 64,
+    "is_percent_growth": 0,
+    "cpu_count": 16
+  },
+  {
+    "file_id": 4,
+    "name": "temp3",
+    "physical_name": "T:\\TempDB\\temp3.ndf",
+    "size_mb": 1024,
+    "growth_mb": 64,
+    "is_percent_growth": 0,
+    "cpu_count": 16
+  },
+  {
+    "file_id": 5,
+    "name": "temp4",
+    "physical_name": "T:\\TempDB\\temp4.ndf",
+    "size_mb": 1024,
+    "growth_mb": 64,
+    "is_percent_growth": 0,
+    "cpu_count": 16
+  }
+]
