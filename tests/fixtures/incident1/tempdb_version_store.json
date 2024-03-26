@@ -1,0 +1,12 @@
+[
+  {
+    "database_name": "PayrollDB",
+    "reserved_page_count": 908800,
+    "reserved_space_kb": 7270400
+  },
+  {
+    "database_name": "ReportsDB",
+    "reserved_page_count": 58000,
+    "reserved_space_kb": 464000
+  }
+]

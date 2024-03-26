@@ -9,6 +9,7 @@ import re
 from collections import defaultdict
 
 from ..models import Finding
+from ..source import SourceError
 
 NAME = "tempdb"
 
@@ -37,6 +38,26 @@ SELECT f.file_id,
 FROM tempdb.sys.database_files AS f
 WHERE f.type = 0
 ORDER BY f.file_id;"""
+
+# Run inside tempdb: how its space is used right now.
+SPACE_SQL = """\
+SELECT SUM(total_page_count) * 8 / 1024 AS total_mb,
+       SUM(unallocated_extent_page_count) * 8 / 1024 AS free_mb,
+       SUM(user_object_reserved_page_count) * 8 / 1024 AS user_objects_mb,
+       SUM(internal_object_reserved_page_count) * 8 / 1024 AS internal_objects_mb,
+       SUM(version_store_reserved_page_count) * 8 / 1024 AS version_store_mb
+FROM sys.dm_db_file_space_usage;"""
+
+# Version store space per database (SQL Server 2017 and later).
+VERSION_STORE_SQL = """\
+SELECT DB_NAME(database_id) AS database_name,
+       reserved_page_count,
+       reserved_space_kb
+FROM sys.dm_tran_version_store_space_usage
+ORDER BY reserved_space_kb DESC;"""
+
+# (free space percentage at or below, score)
+FREE_SPACE_LEVELS = [(5, 90), (10, 70), (20, 45)]
 
 MAX_RECOMMENDED_FILES = 8
 SIZE_TOLERANCE = 1.1  # largest file may be this much bigger than the smallest
@@ -108,9 +129,58 @@ def layout_finding(rows):
     )
 
 
+def space_finding(ctx):
+    rows = ctx.source.fetch("tempdb_space", SPACE_SQL, database="tempdb")
+    if not rows or not rows[0].get("total_mb"):
+        return None
+    row = rows[0]
+    free_pct = 100.0 * row["free_mb"] / row["total_mb"]
+    score = 0
+    for ceiling, level_score in FREE_SPACE_LEVELS:
+        if free_pct <= ceiling:
+            score = level_score
+            break
+    if not score:
+        return None
+    uses = [
+        ("version store", row["version_store_mb"]),
+        ("internal objects (sorts, hashes, spools)", row["internal_objects_mb"]),
+        ("user objects (temp tables)", row["user_objects_mb"]),
+    ]
+    uses.sort(key=lambda u: -u[1])
+    evidence = [
+        "{:.1f}% free: {} MB of {} MB".format(free_pct, row["free_mb"], row["total_mb"]),
+        "used by " + ", ".join("{} {} MB".format(name, mb) for name, mb in uses),
+    ]
+    advice = []
+    top = uses[0][0]
+    if top == "version store":
+        advice.append("The oldest active snapshot transaction stops the version store being cleaned: see the blocking section.")
+        try:
+            by_db = ctx.source.fetch("tempdb_version_store", VERSION_STORE_SQL)
+        except SourceError:
+            by_db = []
+        for db in by_db[:3]:
+            evidence.append("version store: {} holds {:.0f} MB".format(db["database_name"], db["reserved_space_kb"] / 1024.0))
+    elif top.startswith("internal"):
+        advice.append("Find queries spilling to tempdb: look for large sorts and hash joins with bad estimates.")
+    else:
+        advice.append("Find sessions with big temp tables: sys.dm_db_session_space_usage.")
+    return Finding(
+        check=NAME,
+        title="tempdb is {:.0f}% full".format(100 - free_pct),
+        score=score,
+        evidence=evidence,
+        advice=advice,
+        data={"free_pct": round(free_pct, 1), "largest_use": top},
+    )
+
+
 def run(ctx):
-    layout = layout_finding(ctx.source.fetch("tempdb_files", FILES_SQL))
-    findings = [layout] if layout else []
+    findings = []
+    for finding in (layout_finding(ctx.source.fetch("tempdb_files", FILES_SQL)), space_finding(ctx)):
+        if finding:
+            findings.append(finding)
     return findings + contention_findings(ctx)
 
 

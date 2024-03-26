@@ -62,9 +62,54 @@ class LayoutTests(unittest.TestCase):
         self.assertIsNone(tempdb.layout_finding([]))
 
     def test_incident(self):
-        (finding,) = [f for f in tempdb.run(Context(FixtureSource(FIXTURES))) if "data_files" in f.data]
+        findings = tempdb.run(Context(FixtureSource(FIXTURES)))
+        self.assertEqual(len(findings), 3)
+        (finding,) = [f for f in findings if "data_files" in f.data]
         self.assertEqual(finding.data["data_files"], 4)
         self.assertEqual(finding.score, 65)
+
+
+class SpaceTests(unittest.TestCase):
+    def finding(self, row, by_db=None):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "tempdb_space":
+                    return [row]
+                if name == "tempdb_version_store":
+                    return by_db or []
+                return []
+
+        return tempdb.space_finding(Context(Fake(FIXTURES)))
+
+    def test_plenty_of_space(self):
+        row = {"total_mb": 10000, "free_mb": 6000, "user_objects_mb": 1, "internal_objects_mb": 1, "version_store_mb": 1}
+        self.assertIsNone(self.finding(row))
+
+    def test_levels(self):
+        base = {"total_mb": 1000, "user_objects_mb": 1, "internal_objects_mb": 1, "version_store_mb": 1}
+        self.assertEqual(self.finding(dict(base, free_mb=190)).score, 45)
+        self.assertEqual(self.finding(dict(base, free_mb=100)).score, 70)
+        self.assertEqual(self.finding(dict(base, free_mb=49)).score, 90)
+
+    def test_internal_objects_advice(self):
+        row = {"total_mb": 1000, "free_mb": 40, "user_objects_mb": 10, "internal_objects_mb": 900, "version_store_mb": 5}
+        finding = self.finding(row)
+        self.assertEqual(finding.data["largest_use"], "internal objects (sorts, hashes, spools)")
+        self.assertIn("spilling", finding.advice[0])
+
+    def test_empty_result(self):
+        class Empty(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return []
+
+        self.assertIsNone(tempdb.space_finding(Context(Empty(FIXTURES))))
+
+    def test_incident_blames_the_version_store(self):
+        finding = tempdb.space_finding(Context(FixtureSource(FIXTURES)))
+        self.assertEqual(finding.title, "tempdb is 90% full")
+        self.assertEqual(finding.score, 70)
+        self.assertEqual(finding.data["largest_use"], "version store")
+        self.assertIn("version store: PayrollDB holds 7100 MB", finding.evidence)
 
 
 class RunTests(unittest.TestCase):
