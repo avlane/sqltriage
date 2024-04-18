@@ -1,4 +1,7 @@
 """Blocking chains, rendered as trees rooted at the head blocker."""
+import re
+from collections import Counter
+
 from ..models import Finding
 from ..source import SourceError
 
@@ -41,6 +44,18 @@ FROM sys.dm_exec_input_buffer(?, NULL);"""
 
 INPUT_BUFFER_LIMIT = 300
 
+# Run in the blocked session's database: which table and index a KEY lock is on.
+KEY_OBJECT_SQL = """\
+SELECT OBJECT_SCHEMA_NAME(p.object_id) AS schema_name,
+       OBJECT_NAME(p.object_id) AS object_name,
+       i.name AS index_name
+FROM sys.partitions AS p
+JOIN sys.indexes AS i
+  ON i.object_id = p.object_id
+ AND i.index_id = p.index_id
+WHERE p.hobt_id = ?;"""
+
+_KEY_RESOURCE = re.compile(r"^KEY:\s*(\d+):(\d+)")
 
 class Node:
     def __init__(self, session_id, row=None):
@@ -148,6 +163,39 @@ def tree_lines(head):
     return lines
 
 
+def parse_key_resource(text):
+    """'KEY: 5:72057594043432960 (8194443284a0)' -> (5, 72057594043432960), else None."""
+    match = _KEY_RESOURCE.match(text or "")
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
+def contended_objects(ctx, head):
+    """Count the victims waiting on each table/index, for KEY locks we can resolve."""
+    counts = Counter()
+    resolved = {}
+    for victim in head.descendants():
+        key = parse_key_resource(victim.wait_resource)
+        if key is None or not victim.database:
+            continue
+        hobt_id = key[1]
+        if (victim.database, hobt_id) not in resolved:
+            try:
+                rows = ctx.source.fetch(
+                    "blocking_object_{}".format(hobt_id), KEY_OBJECT_SQL, (hobt_id,), database=victim.database
+                )
+            except SourceError:
+                rows = []
+            if rows:
+                row = rows[0]
+                resolved[(victim.database, hobt_id)] = "{}.{}.{}".format(row["schema_name"], row["object_name"], row["index_name"])
+            else:
+                resolved[(victim.database, hobt_id)] = None
+        name = resolved[(victim.database, hobt_id)]
+        if name:
+            counts[name] += 1
+    return counts
+
+
 def input_buffer(ctx, head):
     """The head blocker's last batch as one trimmed line, or None."""
     if head.placeholder and not head.children:
@@ -191,6 +239,11 @@ def run(ctx):
             title = "Blocking: spid {} is stuck".format(head.session_id)
             detail = "Blocked by a system condition ({}).".format(head.system_blocker)
         evidence = []
+        objects = contended_objects(ctx, head)
+        if objects:
+            evidence.append(
+                "locks contended: " + ", ".join("{} ({} waiting)".format(n, c) for n, c in objects.most_common())
+            )
         buffered = input_buffer(ctx, head)
         if buffered:
             evidence.append("head blocker input buffer - " + buffered)

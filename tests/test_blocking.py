@@ -89,6 +89,49 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(finding.title, "Blocking: 3 sessions are blocking each other in a cycle")
 
 
+class ResourceTests(unittest.TestCase):
+    def test_parse_key_resource(self):
+        self.assertEqual(blocking.parse_key_resource("KEY: 5:72057594043432960 (8194443284a0)"), (5, 72057594043432960))
+        self.assertIsNone(blocking.parse_key_resource("PAGE: 5:1:88213"))
+        self.assertIsNone(blocking.parse_key_resource(None))
+
+    def test_objects_are_counted_per_index(self):
+        ctx = Context(FixtureSource(FIXTURES))
+        head = blocking.build_chains(blocking_rows())[0]
+        counts = blocking.contended_objects(ctx, head)
+        self.assertEqual(counts["dbo.PayRun.PK_PayRun"], 3)
+        self.assertEqual(counts["dbo.PayRunLine.IX_PayRunLine_PayRunId"], 3)
+
+    def test_unresolvable_keys_are_skipped(self):
+        class Denied(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                raise SourceError("denied")
+
+        head = blocking.build_chains(blocking_rows())[0]
+        self.assertEqual(len(blocking.contended_objects(Context(Denied(FIXTURES)), head)), 0)
+
+    def test_each_hobt_is_looked_up_once(self):
+        calls = []
+
+        class Counting(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                calls.append(name)
+                return super().fetch(name, sql, params, database)
+
+        head = blocking.build_chains(blocking_rows())[0]
+        blocking.contended_objects(Context(Counting(FIXTURES)), head)
+        self.assertEqual(sorted(calls), ["blocking_object_72057594043432960", "blocking_object_72057594043498496"])
+
+    def test_finding_lists_the_objects(self):
+        big, _ = blocking.run(Context(FixtureSource(FIXTURES)))
+        self.assertIn("locks contended: dbo.PayRun.PK_PayRun (3 waiting), dbo.PayRunLine.IX_PayRunLine_PayRunId (3 waiting)", big.evidence)
+
+
+def blocking_rows():
+    with open(os.path.join(FIXTURES, "blocking_sessions.json")) as handle:
+        return json.load(handle)
+
+
 class RunTests(unittest.TestCase):
     def test_incident_fixture(self):
         findings = blocking.run(Context(FixtureSource(FIXTURES)))
