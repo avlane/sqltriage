@@ -1,6 +1,7 @@
 """SQL Server Agent jobs: recent failures and jobs that are running too long."""
 from collections import OrderedDict
 
+from ..fmt import span
 from ..models import Finding
 
 NAME = "agent"
@@ -103,28 +104,23 @@ def long_running(ctx):
     return found
 
 
-def _span(seconds):
-    hours, rest = divmod(int(seconds), 3600)
-    return "{}h{:02d}m".format(hours, rest // 60) if hours else "{}m".format(rest // 60)
-
-
 def long_running_findings(ctx):
     findings = []
     for job, usual, ratio in long_running(ctx):
         seconds = job["running_seconds"]
         if usual:
             evidence = [
-                "running for {} against a usual {} ({:.1f}x)".format(_span(seconds), _span(usual), ratio),
+                "running for {} against a usual {} ({:.1f}x)".format(span(seconds), span(usual), ratio),
             ]
             score = 40 + min(40, (ratio - 1) * 8)
         else:
-            evidence = ["running for {} and there is no run history to compare with".format(_span(seconds))]
+            evidence = ["running for {} and there is no run history to compare with".format(span(seconds))]
             score = 40
         evidence.append("started {}, now on step {}".format(job["started_at"], job["current_step_id"]))
         findings.append(
             Finding(
                 check=NAME,
-                title="Agent job running long: {} ({})".format(job["job_name"], _span(seconds)),
+                title="Agent job running long: {} ({})".format(job["job_name"], span(seconds)),
                 score=int(round(score)),
                 evidence=evidence,
                 advice=["Check what the job's session is waiting on before deciding to stop it."],

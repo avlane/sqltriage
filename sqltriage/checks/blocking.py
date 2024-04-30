@@ -2,6 +2,7 @@
 import re
 from collections import Counter
 
+from ..fmt import span
 from ..models import Finding
 from ..source import SourceError
 
@@ -54,6 +55,17 @@ JOIN sys.indexes AS i
   ON i.object_id = p.object_id
  AND i.index_id = p.index_id
 WHERE p.hobt_id = ?;"""
+
+# How long the head blocker's oldest transaction has been open.  A sleeping
+# blocker has no start_time on a request, but its transaction knows.
+TRANSACTION_SQL = """\
+SELECT MIN(tat.transaction_begin_time) AS began_at,
+       DATEDIFF(SECOND, MIN(tat.transaction_begin_time), GETDATE()) AS age_seconds,
+       COUNT(*) AS open_transactions
+FROM sys.dm_tran_session_transactions AS tst
+JOIN sys.dm_tran_active_transactions AS tat
+  ON tat.transaction_id = tst.transaction_id
+WHERE tst.session_id = ?;"""
 
 _KEY_RESOURCE = re.compile(r"^KEY:\s*(\d+):(\d+)")
 
@@ -214,12 +226,29 @@ def input_buffer(ctx, head):
     return "{}: {}".format(rows[0].get("event_type") or "input buffer", text)
 
 
-def score_chain(head):
+def transaction_age(ctx, head):
+    """(began_at, age_seconds) of the head blocker's oldest open transaction, or None."""
+    if head.placeholder or not head.open_tran:
+        return None
+    try:
+        rows = ctx.source.fetch(
+            "blocking_transaction_{}".format(head.session_id), TRANSACTION_SQL, (head.session_id,)
+        )
+    except SourceError:
+        return None
+    if not rows or rows[0].get("began_at") is None:
+        return None
+    return rows[0]["began_at"], int(rows[0]["age_seconds"])
+
+
+def score_chain(head, age_seconds=None):
     victims = head.descendants()
     longest = max([v.wait_ms for v in victims] or [0]) / 1000.0
     score = 35 + min(30, len(victims) * 3) + min(25, longest / 4.0)
     if head.status == "sleeping" and head.open_tran:
         score += 8
+    if age_seconds:
+        score += min(10, age_seconds / 600.0)
     return int(min(98, round(score)))
 
 
@@ -244,6 +273,9 @@ def run(ctx):
             evidence.append(
                 "locks contended: " + ", ".join("{} ({} waiting)".format(n, c) for n, c in objects.most_common())
             )
+        age = transaction_age(ctx, head)
+        if age:
+            evidence.append("oldest open transaction began {} ({} ago)".format(age[0], span(age[1])))
         buffered = input_buffer(ctx, head)
         if buffered:
             evidence.append("head blocker input buffer - " + buffered)
@@ -251,7 +283,7 @@ def run(ctx):
             Finding(
                 check=NAME,
                 title=title,
-                score=score_chain(head) if victims else 40,
+                score=score_chain(head, age[1] if age else None) if victims else 40,
                 detail=detail,
                 evidence=evidence,
                 block=tree_lines(head),

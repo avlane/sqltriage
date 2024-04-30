@@ -127,6 +127,39 @@ class ResourceTests(unittest.TestCase):
         self.assertIn("locks contended: dbo.PayRun.PK_PayRun (3 waiting), dbo.PayRunLine.IX_PayRunLine_PayRunId (3 waiting)", big.evidence)
 
 
+class TransactionAgeTests(unittest.TestCase):
+    def test_age_from_fixture(self):
+        ctx = Context(FixtureSource(FIXTURES))
+        head = blocking.build_chains(blocking_rows())[0]
+        self.assertEqual(blocking.transaction_age(ctx, head), ("2023-03-14T08:51:20", 4140))
+
+    def test_session_without_a_transaction_is_not_asked(self):
+        class Boom(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                raise AssertionError("should not query")
+
+        node = blocking.Node(5, {"session_id": 5, "open_transaction_count": 0})
+        self.assertIsNone(blocking.transaction_age(Context(Boom(FIXTURES)), node))
+
+    def test_null_aggregate_is_ignored(self):
+        class Null(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return [{"began_at": None, "age_seconds": None, "open_transactions": 0}]
+
+        node = blocking.Node(5, {"session_id": 5, "open_transaction_count": 1})
+        self.assertIsNone(blocking.transaction_age(Context(Null(FIXTURES)), node))
+
+    def test_old_transactions_score_higher(self):
+        head = blocking.build_chains(blocking_rows())[0]
+        self.assertGreater(blocking.score_chain(head, 3600), blocking.score_chain(head, None))
+        self.assertLessEqual(blocking.score_chain(head, 10 ** 6), 98)
+
+    def test_finding_mentions_the_age(self):
+        big, small = blocking.run(Context(FixtureSource(FIXTURES)))
+        self.assertIn("oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)", big.evidence)
+        self.assertIn("(13m ago)", " ".join(small.evidence))
+
+
 def blocking_rows():
     with open(os.path.join(FIXTURES, "blocking_sessions.json")) as handle:
         return json.load(handle)
