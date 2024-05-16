@@ -1,0 +1,58 @@
+[
+  {
+    "database_name": "master",
+    "file_id": 2,
+    "size_mb": 2,
+    "growth_value": 10,
+    "is_percent_growth": 1,
+    "max_size": -1
+  },
+  {
+    "database_name": "model",
+    "file_id": 2,
+    "size_mb": 8,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "msdb",
+    "file_id": 2,
+    "size_mb": 20,
+    "growth_value": 10,
+    "is_percent_growth": 1,
+    "max_size": -1
+  },
+  {
+    "database_name": "tempdb",
+    "file_id": 2,
+    "size_mb": 512,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "PayrollDB",
+    "file_id": 2,
+    "size_mb": 61440,
+    "growth_value": 10,
+    "is_percent_growth": 1,
+    "max_size": -1
+  },
+  {
+    "database_name": "ReportsDB",
+    "file_id": 2,
+    "size_mb": 24576,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "Staging",
+    "file_id": 2,
+    "size_mb": 6144,
+    "growth_value": 1024,
+    "is_percent_growth": 0,
+    "max_size": -1
+  }
+]
