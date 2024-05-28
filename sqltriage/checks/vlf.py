@@ -6,6 +6,8 @@ from ..source import SourceError
 NAME = "vlf"
 
 # sys.dm_db_log_info (SQL Server 2016 SP2 and later) returns one row per VLF.
+# Database snapshots and databases the login cannot open (a non-readable AG
+# secondary, say) make the CROSS APPLY fail for the whole query, so leave them out.
 SQL = """\
 SELECT d.name AS database_name,
        d.recovery_model_desc,
@@ -16,6 +18,8 @@ SELECT d.name AS database_name,
 FROM sys.databases AS d
 CROSS APPLY sys.dm_db_log_info(d.database_id) AS l
 WHERE d.state = 0
+  AND d.source_database_id IS NULL
+  AND HAS_DBACCESS(d.name) = 1
 GROUP BY d.name, d.recovery_model_desc, d.log_reuse_wait_desc;"""
 
 # Log file growth settings; with percentage growth the VLF count creeps up

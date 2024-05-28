@@ -9,6 +9,10 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
 
 class VlfTests(unittest.TestCase):
+    def test_query_leaves_out_snapshots_and_inaccessible_databases(self):
+        self.assertIn("d.source_database_id IS NULL", vlf.SQL)
+        self.assertIn("HAS_DBACCESS(d.name) = 1", vlf.SQL)
+
     def test_score_levels(self):
         self.assertEqual(vlf.vlf_score(12), 0)
         self.assertEqual(vlf.vlf_score(500), 20)
