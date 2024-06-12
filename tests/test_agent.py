@@ -3,7 +3,7 @@ import unittest
 
 from sqltriage.checks import agent
 from sqltriage.context import Context
-from sqltriage.source import FixtureSource
+from sqltriage.source import FixtureSource, SourceError
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -36,6 +36,35 @@ class FailedJobTests(unittest.TestCase):
         evidence = by_job["Nightly ETL Load"].evidence
         self.assertTrue(any("step 3 (Load Fact Tables)" in line for line in evidence))
         self.assertTrue(any("ran for 4540s" in line for line in evidence))
+
+    def test_failing_step_and_error_number(self):
+        by_job = {f.data["job"]: f for f in agent.failed_job_findings(Context(FixtureSource(FIXTURES)))}
+        etl = by_job["Nightly ETL Load"]
+        self.assertIn("failing step 3 (Load Fact Tables): error 1205, severity 13", etl.evidence)
+        self.assertTrue(any("chosen as the deadlock victim" in e for e in etl.evidence))
+        self.assertEqual(etl.advice, [agent.STEP_HINTS[1205]])
+
+    def test_unknown_error_keeps_the_generic_advice(self):
+        class Odd(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                rows = super().fetch(name, sql, params, database)
+                if name == "agent_failed_steps":
+                    for row in rows:
+                        row["sql_message_id"] = 99999
+                return rows
+
+        by_job = {f.data["job"]: f for f in agent.failed_job_findings(Context(Odd(FIXTURES)))}
+        self.assertIn("Open the job history", by_job["Nightly ETL Load"].advice[0])
+
+    def test_step_history_failure_falls_back_to_the_outcome_message(self):
+        class NoSteps(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "agent_failed_steps":
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        by_job = {f.data["job"]: f for f in agent.failed_job_findings(Context(NoSteps(FIXTURES)))}
+        self.assertTrue(any("The last step to run was step 3" in e for e in by_job["Nightly ETL Load"].evidence))
 
     def test_window_is_part_of_the_query(self):
         seen = []

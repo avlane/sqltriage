@@ -1,0 +1,38 @@
+[
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "step_id": 1,
+    "step_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "sql_message_id": 3041,
+    "sql_severity": 16,
+    "started_at": "2023-03-14T09:45:00",
+    "message": "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041).  The step failed."
+  },
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "step_id": 1,
+    "step_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "sql_message_id": 3041,
+    "sql_severity": 16,
+    "started_at": "2023-03-14T09:30:00",
+    "message": "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041).  The step failed."
+  },
+  {
+    "job_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "step_id": 1,
+    "step_name": "DatabaseBackup - USER_DATABASES - LOG",
+    "sql_message_id": 3041,
+    "sql_severity": 16,
+    "started_at": "2023-03-14T09:15:00",
+    "message": "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041).  The step failed."
+  },
+  {
+    "job_name": "Nightly ETL Load",
+    "step_id": 3,
+    "step_name": "Load Fact Tables",
+    "sql_message_id": 1205,
+    "sql_severity": 13,
+    "started_at": "2023-03-14T02:00:00",
+    "message": "Executed as user: CORP\\svc_sql. Transaction (Process ID 88) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction. [SQLSTATE 40001] (Error 1205).  The step failed."
+  }
+]

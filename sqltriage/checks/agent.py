@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 from ..fmt import span
 from ..models import Finding
+from ..source import SourceError
 
 NAME = "agent"
 
@@ -22,6 +23,34 @@ WHERE h.step_id = 0
   AND h.run_status = 0
   AND msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())
 ORDER BY started_at DESC;"""
+
+# The step that actually failed carries the SQL error; the job outcome row only
+# says "the job failed".
+FAILED_STEPS_SQL = """\
+SELECT j.name AS job_name,
+       h.step_id,
+       h.step_name,
+       h.sql_message_id,
+       h.sql_severity,
+       h.message,
+       msdb.dbo.agent_datetime(h.run_date, h.run_time) AS started_at
+FROM msdb.dbo.sysjobhistory AS h
+JOIN msdb.dbo.sysjobs AS j
+  ON j.job_id = h.job_id
+WHERE h.step_id > 0
+  AND h.run_status = 0
+  AND msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())
+ORDER BY started_at DESC;"""
+
+# sql_message_id -> what usually fixes it
+STEP_HINTS = {
+    1205: "The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.",
+    3041: "A backup failed; the real reason is in the SQL Server error log just before this time.",
+    9002: "The transaction log is full: see the log section of this report.",
+    229: "The job's owner or proxy lacks a permission.",
+    18456: "The job's login could not connect.",
+    2627: "A key violation: the data the step loads has changed.",
+}
 
 # Jobs that have started and not stopped in the current Agent session.  The
 # newest row in syssessions is the session since the last Agent restart.
@@ -69,6 +98,18 @@ def failed_jobs(ctx):
     for row in rows:
         jobs.setdefault(row["job_name"], []).append(row)
     return hours, jobs
+
+
+def failed_steps(ctx, hours):
+    """job name -> its failing step rows, newest first; empty if history cannot be read."""
+    try:
+        rows = ctx.source.fetch("agent_failed_steps", FAILED_STEPS_SQL.format(hours=hours))
+    except SourceError:
+        return {}
+    steps = {}
+    for row in rows:
+        steps.setdefault(row["job_name"], []).append(row)
+    return steps
 
 
 def failure_score(job_name, count):
@@ -132,6 +173,7 @@ def long_running_findings(ctx):
 
 def failed_job_findings(ctx):
     hours, jobs = failed_jobs(ctx)
+    steps = failed_steps(ctx, hours) if jobs else {}
     findings = []
     for job_name, rows in jobs.items():
         latest = rows[0]
@@ -139,7 +181,18 @@ def failed_job_findings(ctx):
             "{} failure(s) in the last {} hours, most recent at {}".format(len(rows), hours, latest["started_at"]),
             "ran for {}s before failing".format(hhmmss_to_seconds(latest["run_duration"])),
         ]
-        if latest.get("message"):
+        advice = ["Open the job history for the failing step and read its error message."]
+        step = steps.get(job_name, [None])[0]
+        if step:
+            evidence.append(
+                "failing step {} ({}): error {}, severity {}".format(
+                    step["step_id"], step["step_name"], step["sql_message_id"], step["sql_severity"]
+                )
+            )
+            evidence.append(" ".join(str(step["message"]).split()))
+            if step["sql_message_id"] in STEP_HINTS:
+                advice = [STEP_HINTS[step["sql_message_id"]]]
+        elif latest.get("message"):
             evidence.append(" ".join(str(latest["message"]).split()))
         findings.append(
             Finding(
@@ -147,7 +200,7 @@ def failed_job_findings(ctx):
                 title="Agent job failed: {} ({}x in {}h)".format(job_name, len(rows), hours),
                 score=failure_score(job_name, len(rows)),
                 evidence=evidence,
-                advice=["Open the job history for the failing step and read its error message."],
+                advice=advice,
                 data={"job": job_name, "failures": len(rows), "window_hours": hours},
             )
         )
