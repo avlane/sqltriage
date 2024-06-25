@@ -96,6 +96,8 @@ def failed_jobs(ctx):
     rows = ctx.source.fetch("agent_failed_jobs", FAILED_SQL.format(hours=hours))
     jobs = OrderedDict()
     for row in rows:
+        if ctx.job_ignored(row["job_name"]):
+            continue
         jobs.setdefault(row["job_name"], []).append(row)
     return hours, jobs
 
@@ -130,6 +132,8 @@ def long_running(ctx):
     history = {r["job_name"]: r for r in ctx.source.fetch("agent_job_durations", DURATION_SQL)}
     found = []
     for job in running:
+        if ctx.job_ignored(job["job_name"]):
+            continue
         seconds = job["running_seconds"]
         past = history.get(job["job_name"])
         if past and past["runs"] >= MIN_HISTORY_RUNS:

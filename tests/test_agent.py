@@ -66,6 +66,12 @@ class FailedJobTests(unittest.TestCase):
         by_job = {f.data["job"]: f for f in agent.failed_job_findings(Context(NoSteps(FIXTURES)))}
         self.assertTrue(any("The last step to run was step 3" in e for e in by_job["Nightly ETL Load"].evidence))
 
+    def test_ignored_jobs_are_skipped_everywhere(self):
+        ctx = Context(FixtureSource(FIXTURES), options={"ignore_jobs": ["databasebackup*", "Purge *"]})
+        self.assertEqual([f.data["job"] for f in agent.failed_job_findings(ctx)], ["Nightly ETL Load"])
+        ctx = Context(FixtureSource(FIXTURES), options={"ignore_jobs": ["Purge *"]})
+        self.assertEqual([f.data["job"] for f in agent.long_running_findings(ctx)], ["IndexOptimize - USER_DATABASES"])
+
     def test_window_is_part_of_the_query(self):
         seen = []
 

@@ -71,6 +71,10 @@ class CliTests(unittest.TestCase):
             code, _ = self.run_cli("--record", "somewhere")
         self.assertEqual(code, 2)
 
+    def test_ignore_jobs(self):
+        _, text = self.run_cli("--only", "agent", "--ignore-jobs", "DatabaseBackup*,Nightly*,IndexOptimize*,Purge*")
+        self.assertNotIn("Agent job", text)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

@@ -36,6 +36,7 @@ def build_parser():
                         help="hide findings ranked below this severity")
     parser.add_argument("--databases", help="comma separated databases to look at (default: all)")
     parser.add_argument("--exclude-databases", help="comma separated databases to leave out")
+    parser.add_argument("--ignore-jobs", help="comma separated Agent job name patterns to skip, such as 'Purge*'")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -82,7 +83,7 @@ def main(argv=None, out=None):
         if args.record:
             source = RecordingSource(source, args.record)
     options = dict(options)
-    for name in ("databases", "exclude_databases"):
+    for name in ("databases", "exclude_databases", "ignore_jobs"):
         value = getattr(args, name)
         if value:
             options[name] = [d.strip() for d in value.split(",") if d.strip()]
