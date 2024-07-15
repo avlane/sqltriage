@@ -40,7 +40,7 @@ ARGUMENT_KEYS = {
         "no_encrypt": "no_encrypt",
     },
     "sample": {"interval": "interval", "top": "top"},
-    "output": {"format": "format", "min_severity": "min_severity"},
+    "output": {"format": "format", "min_severity": "min_severity", "fail_on": "fail_on"},
 }
 
 # section -> {key: Context.options name}

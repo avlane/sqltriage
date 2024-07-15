@@ -9,7 +9,7 @@ from .checks import CHECKS
 from .connect import build_connection_string
 from .context import Context, ManualClock
 from .render import FORMATS
-from .models import LEVELS
+from .models import LEVELS, severity_rank
 from .report import build_report, filter_report
 from .source import FixtureSource, PyodbcSource, RecordingSource
 
@@ -37,6 +37,8 @@ def build_parser():
     parser.add_argument("--databases", help="comma separated databases to look at (default: all)")
     parser.add_argument("--exclude-databases", help="comma separated databases to leave out")
     parser.add_argument("--ignore-jobs", help="comma separated Agent job name patterns to skip, such as 'Purge*'")
+    parser.add_argument("--fail-on", choices=[label for _, label in reversed(LEVELS)],
+                        help="exit with status 1 if any finding is at least this severe")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -95,7 +97,8 @@ def main(argv=None, out=None):
         report = build_report(ctx, args.server, names)
     finally:
         source.close()
+    failing = args.fail_on is not None and any(f.severity_rank >= severity_rank(args.fail_on) for f in report.findings)
     if args.min_severity != "info":
         report = filter_report(report, args.min_severity)
     out.write(FORMATS[args.format](report))
-    return 0
+    return 1 if failing else 0

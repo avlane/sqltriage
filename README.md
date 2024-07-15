@@ -43,6 +43,12 @@ files replay with `--fixtures DIR`, so you can look at the same data again later
 or attach it to a ticket. They contain real query text, logins and host names:
 read them before sharing.
 
+## Exit status
+
+`0` normally, `1` when `--fail-on LEVEL` is given and a finding is at least that
+severe (judged before `--min-severity` hides anything), `2` for a usage or
+configuration error. That makes it usable from a monitoring job.
+
 ## Configuration file
 
 Settings can live in `sqltriage.toml` (current directory) or

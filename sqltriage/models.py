@@ -13,6 +13,11 @@ def severity_for(score):
     return "info"
 
 
+def severity_rank(label):
+    """0 (info) to 4 (critical), for comparing severities."""
+    return [name for _, name in reversed(LEVELS)].index(label)
+
+
 @dataclass
 class Finding:
     check: str
@@ -28,3 +33,7 @@ class Finding:
     @property
     def severity(self):
         return severity_for(self.score)
+
+    @property
+    def severity_rank(self):
+        return severity_rank(self.severity)

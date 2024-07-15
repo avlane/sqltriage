@@ -1,6 +1,6 @@
 import unittest
 
-from sqltriage.models import Finding
+from sqltriage.models import Finding, severity_rank
 from sqltriage.scoring import clamp, rank, step_score
 
 LEVELS = [(100, 80), (10, 40), (1, 10)]
@@ -16,6 +16,16 @@ class StepScoreTests(unittest.TestCase):
 
     def test_none(self):
         self.assertEqual(step_score(None, LEVELS), 0)
+
+
+class SeverityRankTests(unittest.TestCase):
+    def test_order(self):
+        labels = ["info", "low", "medium", "high", "critical"]
+        self.assertEqual([severity_rank(x) for x in labels], [0, 1, 2, 3, 4])
+
+    def test_finding_property(self):
+        self.assertEqual(Finding("c", "title", 90).severity_rank, 4)
+        self.assertEqual(Finding("c", "title", 5).severity_rank, 0)
 
 
 class ClampTests(unittest.TestCase):

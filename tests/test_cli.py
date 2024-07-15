@@ -75,6 +75,22 @@ class CliTests(unittest.TestCase):
         _, text = self.run_cli("--only", "agent", "--ignore-jobs", "DatabaseBackup*,Nightly*,IndexOptimize*,Purge*")
         self.assertNotIn("Agent job", text)
 
+    def test_fail_on_sets_the_exit_status(self):
+        code, _ = self.run_cli("--fail-on", "critical", "--only", "vlf")
+        self.assertEqual(code, 1)
+        code, _ = self.run_cli("--fail-on", "critical", "--only", "agent")
+        self.assertEqual(code, 0)
+
+    def test_fail_on_looks_past_min_severity(self):
+        code, text = self.run_cli("--fail-on", "critical", "--min-severity", "critical", "--only", "waits")
+        self.assertEqual(code, 0)
+        code, _ = self.run_cli("--fail-on", "high", "--min-severity", "critical", "--only", "blocking")
+        self.assertEqual(code, 1)
+
+    def test_default_exit_status_is_zero(self):
+        code, _ = self.run_cli()
+        self.assertEqual(code, 0)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))
