@@ -25,6 +25,42 @@ class SignalTests(unittest.TestCase):
         self.assertEqual(cpu.signal_wait_pct([]), 0.0)
 
 
+def sched(i, runnable):
+    return {"scheduler_id": i, "cpu_id": i, "status": "VISIBLE ONLINE", "runnable_tasks_count": runnable,
+            "current_tasks_count": runnable + 5, "work_queue_count": 0}
+
+
+class ImbalanceTests(unittest.TestCase):
+    def test_hot_scheduler(self):
+        online = [sched(0, 12)] + [sched(i, 1) for i in range(1, 8)]
+        finding = cpu.imbalance_finding(online)
+        self.assertEqual(finding.data, {"scheduler_id": 0, "runnable": 12, "median": 1})
+        self.assertIn("scheduler 0 has 12 runnable tasks", finding.title)
+
+    def test_evenly_busy_is_not_imbalance(self):
+        self.assertIsNone(cpu.imbalance_finding([sched(i, 6) for i in range(8)]))
+
+    def test_small_peaks_are_ignored(self):
+        self.assertIsNone(cpu.imbalance_finding([sched(0, 3)] + [sched(i, 0) for i in range(1, 8)]))
+
+    def test_too_few_schedulers(self):
+        self.assertIsNone(cpu.imbalance_finding([sched(0, 20), sched(1, 0)]))
+
+    def test_run_returns_both_findings(self):
+        class Skewed(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return [sched(0, 12)] + [sched(i, 1) for i in range(1, 8)]
+
+        c = Context(Skewed(FIXTURES), sleep=lambda s: None)
+        c.cache["waits"] = []
+        titles = [f.title for f in cpu.run(c)]
+        self.assertEqual(len(titles), 2)
+        self.assertTrue(titles[0].startswith("CPU imbalance"))
+
+    def test_incident_has_none(self):
+        self.assertEqual(len(cpu.run(ctx())), 1)
+
+
 class RunTests(unittest.TestCase):
     def test_incident(self):
         (finding,) = cpu.run(ctx())

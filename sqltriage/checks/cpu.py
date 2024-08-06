@@ -32,6 +32,41 @@ RUNNABLE_LEVELS = [(5, 85), (3, 70), (2, 55), (1, 40)]
 SIGNAL_LEVELS = [(25, 75), (15, 50)]
 
 
+# One scheduler piling up work while the rest idle points at affinity settings,
+# a MAXDOP 1 workload pinned by a connection, or a single hot session.
+IMBALANCE_MIN_RUNNABLE = 4
+IMBALANCE_FACTOR = 3.0
+
+
+def imbalance_finding(online):
+    runnable = sorted(r["runnable_tasks_count"] for r in online)
+    if len(runnable) < 4:
+        return None
+    hottest = online[0]
+    for row in online:
+        if row["runnable_tasks_count"] > hottest["runnable_tasks_count"]:
+            hottest = row
+    peak = hottest["runnable_tasks_count"]
+    median = runnable[len(runnable) // 2]
+    if peak < IMBALANCE_MIN_RUNNABLE or peak < IMBALANCE_FACTOR * max(median, 1):
+        return None
+    return Finding(
+        check=NAME,
+        title="CPU imbalance: scheduler {} has {} runnable tasks, the median is {}".format(
+            hottest["scheduler_id"], peak, median
+        ),
+        score=45 + min(25, peak),
+        detail="One scheduler is overloaded while most of the others are not.",
+        evidence=["scheduler {} (cpu {}) has {} runnable and {} current tasks".format(
+            hottest["scheduler_id"], hottest.get("cpu_id"), peak, hottest.get("current_tasks_count"))],
+        advice=[
+            "Check the CPU affinity mask and any Resource Governor pool affinity.",
+            "Look for a single connection running many serial queries that all land on one scheduler.",
+        ],
+        data={"scheduler_id": hottest["scheduler_id"], "runnable": peak, "median": median},
+    )
+
+
 def signal_wait_pct(deltas):
     total = sum(d.wait_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
     signal = sum(d.signal_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
@@ -68,9 +103,11 @@ def run(ctx):
         evidence.append(
             "{} scheduler(s) are VISIBLE OFFLINE: check edition core limits and affinity".format(len(offline))
         )
+    extra = imbalance_finding(online)
+    extra = [extra] if extra else []
     if not score:
-        return [Finding(NAME, "CPU scheduler pressure: none seen", 0, evidence=evidence)]
-    return [
+        return [Finding(NAME, "CPU scheduler pressure: none seen", 0, evidence=evidence)] + extra
+    return extra + [
         Finding(
             check=NAME,
             title="CPU scheduler pressure: runnable queue averages {:.1f} per scheduler".format(average),
