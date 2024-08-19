@@ -1,0 +1,41 @@
+[
+  {
+    "session_id": 112,
+    "cpu_ms": 4210000,
+    "elapsed_ms": 618000,
+    "logical_reads": 91233411,
+    "dop": 8,
+    "status": "running",
+    "wait_type": null,
+    "database_name": "ReportsDB",
+    "login_name": "rpt_reader",
+    "program_name": "Report Server",
+    "statement_text": "SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre"
+  },
+  {
+    "session_id": 98,
+    "cpu_ms": 880000,
+    "elapsed_ms": 55000,
+    "logical_reads": 4410022,
+    "dop": 1,
+    "status": "runnable",
+    "wait_type": "SOS_SCHEDULER_YIELD",
+    "database_name": "PayrollDB",
+    "login_name": "svc_payroll",
+    "program_name": ".Net SqlClient Data Provider",
+    "statement_text": "SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId"
+  },
+  {
+    "session_id": 133,
+    "cpu_ms": 120000,
+    "elapsed_ms": 9000,
+    "logical_reads": 600120,
+    "dop": 1,
+    "status": "runnable",
+    "wait_type": null,
+    "database_name": "PayrollDB",
+    "login_name": "svc_payroll",
+    "program_name": ".Net SqlClient Data Provider",
+    "statement_text": "UPDATE dbo.PayRunStaging SET Validated = 1 WHERE PayRunId = @p0"
+  }
+]

@@ -3,7 +3,7 @@ import unittest
 
 from sqltriage.checks import cpu, waits
 from sqltriage.context import Context
-from sqltriage.source import FixtureSource
+from sqltriage.source import FixtureSource, SourceError
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -30,6 +30,33 @@ def sched(i, runnable):
             "current_tasks_count": runnable + 5, "work_queue_count": 0}
 
 
+class TopRequestsTests(unittest.TestCase):
+    def test_lines(self):
+        lines = cpu.top_requests(ctx())
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[0].startswith("spid 112 rpt_reader@ReportsDB used 1h10m of CPU in 10m (dop 8, running): SELECT c.CostCentre"))
+
+    def test_long_statements_are_trimmed(self):
+        class Wordy(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return [{"session_id": 1, "cpu_ms": 1000, "elapsed_ms": 1000, "dop": 1, "status": "running",
+                         "login_name": "a", "database_name": "d", "statement_text": "SELECT " + "x, " * 200}]
+
+        (line,) = cpu.top_requests(Context(Wordy(FIXTURES)))
+        self.assertTrue(line.endswith("..."))
+
+    def test_unreadable(self):
+        class Denied(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                raise SourceError("VIEW SERVER STATE denied")
+
+        self.assertEqual(cpu.top_requests(Context(Denied(FIXTURES))), [])
+
+    def test_pressure_finding_includes_them(self):
+        (finding,) = cpu.run(ctx())
+        self.assertTrue(any(e.startswith("spid 112 ") for e in finding.evidence))
+
+
 class ImbalanceTests(unittest.TestCase):
     def test_hot_scheduler(self):
         online = [sched(0, 12)] + [sched(i, 1) for i in range(1, 8)]
@@ -49,6 +76,8 @@ class ImbalanceTests(unittest.TestCase):
     def test_run_returns_both_findings(self):
         class Skewed(FixtureSource):
             def fetch(inner, name, sql, params=(), database=None):
+                if name != "cpu_schedulers":
+                    return []
                 return [sched(0, 12)] + [sched(i, 1) for i in range(1, 8)]
 
         c = Context(Skewed(FIXTURES), sleep=lambda s: None)

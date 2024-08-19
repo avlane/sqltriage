@@ -5,7 +5,9 @@ have everything they need except CPU.  And the share of wait time that is
 *signal* wait (time spent runnable after the resource wait ended) says how long
 tasks queue for a CPU in general.
 """
+from ..fmt import span
 from ..models import Finding
+from ..source import SourceError
 from ..scoring import clamp, step_score
 from . import waits
 from .. import waitinfo
@@ -25,6 +27,36 @@ SELECT scheduler_id,
        pending_disk_io_count
 FROM sys.dm_os_schedulers
 WHERE scheduler_id < 255;"""
+
+# The requests that have used the most CPU so far.  statement_text is the part
+# of the batch that is actually executing, cut out with the statement offsets.
+TOP_REQUESTS_SQL = """\
+SELECT TOP (5)
+       r.session_id,
+       r.cpu_time AS cpu_ms,
+       r.total_elapsed_time AS elapsed_ms,
+       r.logical_reads,
+       r.dop,
+       r.status,
+       r.wait_type,
+       DB_NAME(r.database_id) AS database_name,
+       s.login_name,
+       s.program_name,
+       SUBSTRING(st.text,
+                 (r.statement_start_offset / 2) + 1,
+                 ((CASE r.statement_end_offset
+                        WHEN -1 THEN DATALENGTH(st.text)
+                        ELSE r.statement_end_offset
+                   END - r.statement_start_offset) / 2) + 1) AS statement_text
+FROM sys.dm_exec_requests AS r
+JOIN sys.dm_exec_sessions AS s
+  ON s.session_id = r.session_id
+OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) AS st
+WHERE s.is_user_process = 1
+  AND r.session_id <> @@SPID
+ORDER BY r.cpu_time DESC;"""
+
+STATEMENT_LIMIT = 160
 
 # (average runnable tasks per scheduler at or above, score)
 RUNNABLE_LEVELS = [(5, 85), (3, 70), (2, 55), (1, 40)]
@@ -67,6 +99,32 @@ def imbalance_finding(online):
     )
 
 
+def top_requests(ctx):
+    """One evidence line per heavy request; nothing if the DMV cannot be read."""
+    try:
+        rows = ctx.source.fetch("cpu_top_requests", TOP_REQUESTS_SQL)
+    except SourceError:
+        return []
+    lines = []
+    for row in rows[:3]:
+        text = " ".join(str(row.get("statement_text") or "").split())
+        if len(text) > STATEMENT_LIMIT:
+            text = text[: STATEMENT_LIMIT - 3] + "..."
+        lines.append(
+            "spid {} {}@{} used {} of CPU in {} (dop {}, {}): {}".format(
+                row["session_id"],
+                row["login_name"],
+                row["database_name"],
+                span(row["cpu_ms"] / 1000.0),
+                span(row["elapsed_ms"] / 1000.0),
+                row["dop"],
+                row["status"],
+                text,
+            )
+        )
+    return lines
+
+
 def signal_wait_pct(deltas):
     total = sum(d.wait_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
     signal = sum(d.signal_ms for d in deltas if not waitinfo.is_benign(d.wait_type))
@@ -107,6 +165,7 @@ def run(ctx):
     extra = [extra] if extra else []
     if not score:
         return [Finding(NAME, "CPU scheduler pressure: none seen", 0, evidence=evidence)] + extra
+    evidence.extend(top_requests(ctx))
     return extra + [
         Finding(
             check=NAME,
