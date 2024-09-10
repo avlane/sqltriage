@@ -1,0 +1,14 @@
+[
+  {
+    "wait_category_desc": "Lock",
+    "total_wait_ms": 410000
+  },
+  {
+    "wait_category_desc": "Tran Log IO",
+    "total_wait_ms": 22000
+  },
+  {
+    "wait_category_desc": "Buffer IO",
+    "total_wait_ms": 18000
+  }
+]

@@ -74,6 +74,24 @@ WHERE a.recent_execs >= {min_execs}
   AND a.recent_duration_us / a.recent_execs > {ratio} * (a.history_duration_us / a.history_execs)
 ORDER BY (a.recent_duration_us / a.recent_execs - a.history_duration_us / a.history_execs) * a.recent_execs DESC;"""
 
+# What the query waited on in the recent window (Query Store wait stats need
+# SQL Server 2017 and WAIT_STATS_CAPTURE_MODE = ON, which is the default).
+WAITS_SQL = """\
+SELECT ws.wait_category_desc,
+       SUM(ws.total_query_wait_time_ms) AS total_wait_ms
+FROM sys.query_store_wait_stats AS ws
+JOIN sys.query_store_plan AS p
+  ON p.plan_id = ws.plan_id
+JOIN sys.query_store_runtime_stats_interval AS i
+  ON i.runtime_stats_interval_id = ws.runtime_stats_interval_id
+WHERE p.query_id = {query_id}
+  AND i.start_time >= DATEADD(HOUR, -{recent_hours}, SYSDATETIMEOFFSET())
+GROUP BY ws.wait_category_desc
+ORDER BY total_wait_ms DESC;"""
+
+# If at least this share of the waiting was for locks, blame blocking, not the plan.
+LOCK_BLAME_SHARE = 0.5
+
 # Forced plans that the optimizer has failed to apply at least once.
 FORCED_FAILURES_SQL = """\
 SET NOCOUNT ON;
@@ -159,7 +177,15 @@ def regression_score(ratio, extra_seconds):
     return int(round(min(95, 30 + min(40.0, (ratio - 1) * 10) + min(20.0, extra_seconds / 30.0))))
 
 
-def regression_finding(database, row):
+def wait_breakdown(waits):
+    """[(category, share 0-1)], biggest first, from the wait stats rows."""
+    total = float(sum(w["total_wait_ms"] for w in waits))
+    if not total:
+        return []
+    return [(w["wait_category_desc"], w["total_wait_ms"] / total) for w in waits]
+
+
+def regression_finding(database, row, waits=()):
     recent = float(row["recent_avg_duration_us"])
     history = float(row["history_avg_duration_us"])
     ratio = recent / history if history else float("inf")
@@ -176,6 +202,13 @@ def regression_finding(database, row):
         "text: " + shorten(row["query_sql_text"]),
     ]
     advice = []
+    score = regression_score(ratio, extra_seconds)
+    breakdown = wait_breakdown(waits)
+    if breakdown:
+        evidence.insert(2, "recent waits: " + ", ".join("{} {:.0f}%".format(c, 100 * s) for c, s in breakdown[:3]))
+        if breakdown[0][0] == "Lock" and breakdown[0][1] >= LOCK_BLAME_SHARE:
+            score = max(score - 20, 20)
+            advice.append("Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.")
     if row["plan_count"] and row["plan_count"] > 1:
         advice.append(
             "In Query Store, compare the plans for query {} and consider forcing the earlier one "
@@ -188,7 +221,7 @@ def regression_finding(database, row):
         title="Query Store regression in {}: query {} ({}), {:.1f}x slower".format(
             database, row["query_id"], label, ratio
         ),
-        score=regression_score(ratio, extra_seconds),
+        score=score,
         evidence=evidence,
         advice=advice,
         data={
@@ -223,10 +256,18 @@ def force_failure_finding(database, row):
     )
 
 
+def recent_waits(ctx, database, query_id):
+    sql = WAITS_SQL.format(query_id=int(query_id), recent_hours=int(setting(ctx, "qs_recent_hours")))
+    try:
+        return ctx.source.fetch("querystore_waits_{}".format(query_id), sql, database=database)
+    except SourceError:
+        return []  # wait capture off, or SQL Server 2016
+
+
 def check_database(ctx, database, sql):
     findings = []
     for row in ctx.source.fetch("querystore_regressions", sql, database=database):
-        findings.append(regression_finding(database, row))
+        findings.append(regression_finding(database, row, recent_waits(ctx, database, row["query_id"])))
     for row in ctx.source.fetch("querystore_forced_failures", FORCED_FAILURES_SQL, database=database):
         findings.append(force_failure_finding(database, row))
     return findings

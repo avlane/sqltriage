@@ -34,6 +34,51 @@ class ScoreTests(unittest.TestCase):
         self.assertLessEqual(querystore.regression_score(500.0, 1e6), 95)
 
 
+class WaitTests(unittest.TestCase):
+    def test_breakdown(self):
+        shares = querystore.wait_breakdown([
+            {"wait_category_desc": "Lock", "total_wait_ms": 300},
+            {"wait_category_desc": "CPU", "total_wait_ms": 100},
+        ])
+        self.assertEqual(shares, [("Lock", 0.75), ("CPU", 0.25)])
+        self.assertEqual(querystore.wait_breakdown([]), [])
+        self.assertEqual(querystore.wait_breakdown([{"wait_category_desc": "CPU", "total_wait_ms": 0}]), [])
+
+    def test_blocking_is_blamed_and_the_score_drops(self):
+        findings = [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "ratio" in f.data]
+        blocked = findings[0]
+        self.assertEqual(blocked.data["query_id"], 4412)
+        self.assertEqual(blocked.evidence[2], "recent waits: Lock 91%, Tran Log IO 5%, Buffer IO 4%")
+        self.assertIn("slow because it is blocked", blocked.advice[0])
+        plain = querystore.regression_finding("PayrollDB", FixtureSource(FIXTURES).fetch("querystore_regressions", "", database="PayrollDB")[0])
+        self.assertEqual(plain.score - blocked.score, 20)
+
+    def test_other_dominant_wait_leaves_the_score_alone(self):
+        row = FixtureSource(FIXTURES).fetch("querystore_regressions", "", database="PayrollDB")[0]
+        waits = [{"wait_category_desc": "CPU", "total_wait_ms": 900}, {"wait_category_desc": "Lock", "total_wait_ms": 100}]
+        with_waits = querystore.regression_finding("PayrollDB", row, waits)
+        without = querystore.regression_finding("PayrollDB", row)
+        self.assertEqual(with_waits.score, without.score)
+        self.assertIn("recent waits: CPU 90%, Lock 10%", with_waits.evidence)
+
+    def test_query_without_wait_stats(self):
+        findings = [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "ratio" in f.data]
+        self.assertFalse(any("recent waits" in e for e in findings[1].evidence))
+
+    def test_sql_uses_the_query_and_window(self):
+        ctx = Context(FixtureSource(FIXTURES), options={"qs_recent_hours": 2})
+        seen = []
+
+        class Spy(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                seen.append(sql)
+                return []
+
+        querystore.recent_waits(Context(Spy(FIXTURES), options=ctx.options), "Sales", 77)
+        self.assertIn("p.query_id = 77", seen[0])
+        self.assertIn("DATEADD(HOUR, -2, SYSDATETIMEOFFSET())", seen[0])
+
+
 class ForcedPlanTests(unittest.TestCase):
     def findings(self):
         return [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "failures" in f.data]
