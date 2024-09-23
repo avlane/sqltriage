@@ -74,6 +74,29 @@ WHERE a.recent_execs >= {min_execs}
   AND a.recent_duration_us / a.recent_execs > {ratio} * (a.history_duration_us / a.history_execs)
 ORDER BY (a.recent_duration_us / a.recent_execs - a.history_duration_us / a.history_execs) * a.recent_execs DESC;"""
 
+# Is Query Store actually collecting?  Run inside each database.
+STATE_SQL = """\
+SELECT actual_state_desc,
+       desired_state_desc,
+       readonly_reason,
+       current_storage_size_mb,
+       max_storage_size_mb
+FROM sys.database_query_store_options;"""
+
+# readonly_reason is a bit mask.
+READONLY_REASONS = [
+    (1, "the database is in read-only mode"),
+    (2, "the database is in single-user mode"),
+    (4, "the database is in emergency mode"),
+    (65536, "the maximum storage size was reached"),
+    (131072, "the number of statements limit was reached"),
+    (262144, "in-memory Query Store ran out of memory"),
+    (524288, "the disk is full"),
+]
+SECONDARY_REPLICA = 8  # expected on a readable secondary, not a problem
+
+STORAGE_FULL_PCT = 90
+
 # What the query waited on in the recent window (Query Store wait stats need
 # SQL Server 2017 and WAIT_STATS_CAPTURE_MODE = ON, which is the default).
 WAITS_SQL = """\
@@ -264,8 +287,48 @@ def recent_waits(ctx, database, query_id):
         return []  # wait capture off, or SQL Server 2016
 
 
+def readonly_reasons(mask):
+    return [text for bit, text in READONLY_REASONS if mask & bit]
+
+
+def state_finding(database, row):
+    """A finding if Query Store is not collecting or is nearly out of space."""
+    actual = row["actual_state_desc"]
+    mask = int(row.get("readonly_reason") or 0)
+    if actual == "OFF" or (actual == "READ_ONLY" and mask == SECONDARY_REPLICA):
+        return None
+    problems = []
+    score = 0
+    if actual == "ERROR":
+        problems.append("Query Store is in an ERROR state and needs to be cleared or reset")
+        score = 70
+    elif actual == "READ_ONLY":
+        reasons = readonly_reasons(mask) or ["the reason is not one this tool knows"]
+        problems.append("Query Store is READ_ONLY because " + " and ".join(reasons))
+        score = 55
+    used_pct = 100.0 * row["current_storage_size_mb"] / row["max_storage_size_mb"] if row["max_storage_size_mb"] else 0
+    if used_pct >= STORAGE_FULL_PCT:
+        problems.append("storage is {:.0f}% used ({} of {} MB)".format(used_pct, row["current_storage_size_mb"], row["max_storage_size_mb"]))
+        score = max(score, 40)
+    if not problems:
+        return None
+    return Finding(
+        check=NAME,
+        title="Query Store in {} is not healthy".format(database),
+        score=score,
+        detail="While Query Store is not collecting, the regression figures for this database go stale.",
+        evidence=problems,
+        advice=["Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE."],
+        data={"database": database, "state": actual, "storage_used_pct": round(used_pct, 1)},
+    )
+
+
 def check_database(ctx, database, sql):
     findings = []
+    for row in ctx.source.fetch("querystore_state", STATE_SQL, database=database):
+        finding = state_finding(database, row)
+        if finding:
+            findings.append(finding)
     for row in ctx.source.fetch("querystore_regressions", sql, database=database):
         findings.append(regression_finding(database, row, recent_waits(ctx, database, row["query_id"])))
     for row in ctx.source.fetch("querystore_forced_failures", FORCED_FAILURES_SQL, database=database):

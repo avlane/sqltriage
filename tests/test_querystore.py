@@ -34,6 +34,49 @@ class ScoreTests(unittest.TestCase):
         self.assertLessEqual(querystore.regression_score(500.0, 1e6), 95)
 
 
+def state(actual="READ_WRITE", mask=0, used=100, maximum=1000, desired="READ_WRITE"):
+    return {"actual_state_desc": actual, "desired_state_desc": desired, "readonly_reason": mask,
+            "current_storage_size_mb": used, "max_storage_size_mb": maximum}
+
+
+class StateTests(unittest.TestCase):
+    def test_healthy(self):
+        self.assertIsNone(querystore.state_finding("Sales", state()))
+
+    def test_storage_nearly_full(self):
+        finding = querystore.state_finding("Sales", state(used=950))
+        self.assertEqual(finding.score, 40)
+        self.assertEqual(finding.evidence, ["storage is 95% used (950 of 1000 MB)"])
+
+    def test_read_only_with_reasons(self):
+        finding = querystore.state_finding("Sales", state("READ_ONLY", 65536 | 1, used=1000))
+        self.assertEqual(finding.score, 55)
+        self.assertIn(
+            "Query Store is READ_ONLY because the database is in read-only mode and the maximum storage size was reached",
+            finding.evidence,
+        )
+
+    def test_read_only_for_unknown_reason(self):
+        finding = querystore.state_finding("Sales", state("READ_ONLY", 1 << 30))
+        self.assertIn("not one this tool knows", finding.evidence[0])
+
+    def test_secondary_replica_is_expected(self):
+        self.assertIsNone(querystore.state_finding("Sales", state("READ_ONLY", 8)))
+
+    def test_error_state(self):
+        self.assertEqual(querystore.state_finding("Sales", state("ERROR")).score, 70)
+
+    def test_off_is_not_reported(self):
+        self.assertIsNone(querystore.state_finding("Sales", state("OFF", used=1000)))
+
+    def test_zero_max_size(self):
+        self.assertIsNone(querystore.state_finding("Sales", state(used=5, maximum=0)))
+
+    def test_incident_flags_only_the_nearly_full_one(self):
+        findings = [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "state" in f.data]
+        self.assertEqual([(f.data["database"], f.score) for f in findings], [("ReportsDB", 40)])
+
+
 class WaitTests(unittest.TestCase):
     def test_breakdown(self):
         shares = querystore.wait_breakdown([

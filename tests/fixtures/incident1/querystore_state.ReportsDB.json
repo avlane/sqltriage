@@ -1,0 +1,9 @@
+[
+  {
+    "actual_state_desc": "READ_WRITE",
+    "desired_state_desc": "READ_WRITE",
+    "readonly_reason": 0,
+    "current_storage_size_mb": 960,
+    "max_storage_size_mb": 1000
+  }
+]
