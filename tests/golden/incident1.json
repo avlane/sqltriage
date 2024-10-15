@@ -1,0 +1,632 @@
+{
+  "schema_version": 1,
+  "tool": "sqltriage 0.1.0",
+  "server": "SQLPROD01",
+  "instance": {
+    "server_name": "SQLPROD01",
+    "product_version": "15.0.4298.1",
+    "major_version": 15,
+    "edition": "Enterprise Edition (64-bit)",
+    "is_hadr_enabled": 1,
+    "sqlserver_start_time": "2023-03-02T03:12:44",
+    "cpu_count": 16,
+    "product_name": "SQL Server 2019"
+  },
+  "generated_at": "2023-03-14 10:00:00",
+  "findings": [
+    {
+      "check": "blocking",
+      "title": "Blocking: spid 57 is blocking 6 session(s)",
+      "severity": "critical",
+      "score": 91,
+      "detail": "Longest wait 94s.",
+      "block": [
+        "spid 57 [sleeping] svc_payroll@APP01 open_tran=1  <- head blocker",
+        "|- spid 61 LCK_M_X 94.0s svc_payroll@APP02 db=PayrollDB open_tran=1",
+        "|    KEY: 5:72057594043432960 (8194443284a0)",
+        "| `- spid 72 LCK_M_U 20.0s svc_payroll@APP03 db=PayrollDB open_tran=1",
+        "|      KEY: 5:72057594043498496 (91ab07c6d5e0)",
+        "|- spid 64 LCK_M_S 61.0s rpt_reader@RPT01 db=PayrollDB",
+        "|    KEY: 5:72057594043432960 (8194443284a0)",
+        "| `- spid 70 LCK_M_X 33.0s svc_payroll@APP02 db=PayrollDB open_tran=1",
+        "|      KEY: 5:72057594043498496 (c2f9d31a4b11)",
+        "|   `- spid 81 LCK_M_S 4.0s rpt_reader@RPT01 db=PayrollDB",
+        "|        KEY: 5:72057594043498496 (c2f9d31a4b11)",
+        "`- spid 75 LCK_M_X 12.0s svc_payroll@APP03 db=PayrollDB open_tran=1",
+        "     KEY: 5:72057594043432960 (8194443284a0)"
+      ],
+      "evidence": [
+        "locks contended: dbo.PayRun.PK_PayRun (3 waiting), dbo.PayRunLine.IX_PayRunLine_PayRunId (3 waiting)",
+        "oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)",
+        "head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]"
+      ],
+      "advice": [
+        "Find out why spid 57 is not finishing; KILL is the last resort."
+      ],
+      "data": {
+        "head_session_id": 57,
+        "victims": 6,
+        "longest_wait_s": 94.0
+      }
+    },
+    {
+      "check": "vlf",
+      "title": "Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION",
+      "severity": "critical",
+      "score": 90,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "18,432 VLFs in 61,440 MB of log (17900 active)",
+        "log autogrowth is 10%, which is how it got this many",
+        "log_reuse_wait_desc = ACTIVE_TRANSACTION: An open transaction is holding the start of the log."
+      ],
+      "advice": [
+        "Shrink the log once and regrow it in a few large steps to rebuild the VLFs.",
+        "Set a fixed growth increment of 1024 to 8192 MB instead.",
+        "Find the oldest open transaction (DBCC OPENTRAN) and check the blocking section."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "vlf_count": 18432,
+        "log_reuse_wait": "ACTIVE_TRANSACTION",
+        "recovery_model": "FULL"
+      }
+    },
+    {
+      "check": "tempdb",
+      "title": "tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages",
+      "severity": "high",
+      "score": 76,
+      "detail": "Sessions are queueing on tempdb's allocation bitmaps while creating or dropping temp objects.",
+      "block": [],
+      "evidence": [
+        "PFS   2:1:1  6 task(s) waiting, longest 31 ms",
+        "SGAM  2:1:3  4 task(s) waiting, longest 25 ms",
+        "PFS   2:3:1  3 task(s) waiting, longest 15 ms",
+        "GAM   2:2:2  1 task(s) waiting, longest 6 ms",
+        "PFS   2:1:8088  1 task(s) waiting, longest 5 ms",
+        "other 2:1:1234  1 task(s) waiting, longest 4 ms"
+      ],
+      "advice": [
+        "Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).",
+        "Look for code that creates and drops temp tables at a very high rate, or large table variables."
+      ],
+      "data": {
+        "allocation_tasks": 15,
+        "other_tasks": 1,
+        "longest_wait_ms": 31
+      }
+    },
+    {
+      "check": "ag",
+      "title": "Availability group PayrollAG: ReportsDB on SQLPROD02 is behind",
+      "severity": "high",
+      "score": 75,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "data movement is suspended (SUSPEND_FROM_USER)",
+        "synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)"
+      ],
+      "advice": [
+        "Send queue growing: look at the network and the primary's log write rate.",
+        "Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary."
+      ],
+      "data": {
+        "ag": "PayrollAG",
+        "replica": "SQLPROD02",
+        "database": "ReportsDB",
+        "log_send_queue_kb": 0,
+        "redo_queue_kb": 0
+      }
+    },
+    {
+      "check": "cpu",
+      "title": "CPU scheduler pressure: runnable queue averages 3.6 per scheduler",
+      "severity": "high",
+      "score": 75,
+      "detail": "Tasks are waiting for CPU time.",
+      "block": [],
+      "evidence": [
+        "16 online schedulers, runnable queue average 3.6, maximum 6",
+        "signal waits are 6.8% of non-idle wait time (15% or more is a concern)",
+        "2 scheduler(s) have tasks queued for a worker (work_queue_count > 0)",
+        "2 scheduler(s) are VISIBLE OFFLINE: check edition core limits and affinity",
+        "spid 112 rpt_reader@ReportsDB used 1h10m of CPU in 10m (dop 8, running): SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre",
+        "spid 98 svc_payroll@PayrollDB used 14m of CPU in 0m (dop 1, runnable): SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId",
+        "spid 133 svc_payroll@PayrollDB used 2m of CPU in 0m (dop 1, runnable): UPDATE dbo.PayRunStaging SET Validated = 1 WHERE PayRunId = @p0"
+      ],
+      "advice": [
+        "Find the top CPU consumers (sys.dm_exec_query_stats or Query Store).",
+        "Check that the host is not CPU-starved by something outside SQL Server."
+      ],
+      "data": {
+        "online_schedulers": 16,
+        "avg_runnable": 3.62,
+        "signal_wait_pct": 6.8
+      }
+    },
+    {
+      "check": "waits",
+      "title": "Wait: LCK_M_X",
+      "severity": "high",
+      "score": 71,
+      "detail": "Sessions are blocked waiting for a lock held by someone else.",
+      "block": [],
+      "evidence": [
+        "42% of non-idle wait time (92000 ms over 14 waits, 6571.4 ms average)",
+        "9.2 tasks waiting on average during the sample",
+        "signal wait 0% of the wait time"
+      ],
+      "advice": [
+        "Look at the blocking section for the head blocker.",
+        "Check for open transactions left by the application."
+      ],
+      "data": {
+        "wait_type": "LCK_M_X",
+        "category": "locking",
+        "wait_ms": 92000,
+        "tasks": 14,
+        "signal_ms": 3,
+        "share_pct": 42.2
+      }
+    },
+    {
+      "check": "agent",
+      "title": "Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)",
+      "severity": "high",
+      "score": 71,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "3 failure(s) in the last 24 hours, most recent at 2023-03-14T09:45:00",
+        "ran for 14s before failing",
+        "failing step 1 (DatabaseBackup - USER_DATABASES - LOG): error 3041, severity 16",
+        "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041). The step failed."
+      ],
+      "advice": [
+        "A backup failed; the real reason is in the SQL Server error log just before this time."
+      ],
+      "data": {
+        "job": "DatabaseBackup - USER_DATABASES - LOG",
+        "failures": 3,
+        "window_hours": 24
+      }
+    },
+    {
+      "check": "tempdb",
+      "title": "tempdb is 90% full",
+      "severity": "high",
+      "score": 70,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "9.8% free: 1100 MB of 11264 MB",
+        "used by version store 7764 MB, internal objects (sorts, hashes, spools) 1800 MB, user objects (temp tables) 600 MB",
+        "version store: PayrollDB holds 7100 MB",
+        "version store: ReportsDB holds 453 MB"
+      ],
+      "advice": [
+        "The oldest active snapshot transaction stops the version store being cleaned: see the blocking section."
+      ],
+      "data": {
+        "free_pct": 9.8,
+        "largest_use": "version store"
+      }
+    },
+    {
+      "check": "ag",
+      "title": "Availability group PayrollAG: PayrollDB on SQLDR02 is behind",
+      "severity": "high",
+      "score": 70,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "log send queue 4.0 GB, no movement, so no estimate",
+        "redo queue 117 MB, no movement, so no estimate",
+        "secondary is 5400 s behind",
+        "synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)"
+      ],
+      "advice": [
+        "Send queue growing: look at the network and the primary's log write rate.",
+        "Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary."
+      ],
+      "data": {
+        "ag": "PayrollAG",
+        "replica": "SQLDR02",
+        "database": "PayrollDB",
+        "log_send_queue_kb": 4200000,
+        "redo_queue_kb": 120000
+      }
+    },
+    {
+      "check": "ag",
+      "title": "Availability group PayrollAG: replica SQLDR02 is unhealthy",
+      "severity": "high",
+      "score": 70,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "SECONDARY, ASYNCHRONOUS_COMMIT (manual failover)",
+        "replica is DISCONNECTED",
+        "synchronization health is NOT_HEALTHY",
+        "last connect error 10060 at 2023-03-14T09:02:11: A connection attempt failed because the connected party did not properly respond after a period of time."
+      ],
+      "advice": [
+        "Check the network path and the endpoint (port 5022 by default) between the replicas.",
+        "Look at the replica's error log around the time it disconnected."
+      ],
+      "data": {
+        "ag": "PayrollAG",
+        "replica": "SQLDR02"
+      }
+    },
+    {
+      "check": "agent",
+      "title": "Agent job running long: IndexOptimize - USER_DATABASES (9h00m)",
+      "severity": "high",
+      "score": 68,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "running for 9h00m against a usual 2h00m (4.5x)",
+        "started 2023-03-14T00:30:00, now on step 1"
+      ],
+      "advice": [
+        "Check what the job's session is waiting on before deciding to stop it."
+      ],
+      "data": {
+        "job": "IndexOptimize - USER_DATABASES",
+        "running_seconds": 32400
+      }
+    },
+    {
+      "check": "querystore",
+      "title": "Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)",
+      "severity": "high",
+      "score": 66,
+      "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
+      "block": [],
+      "evidence": [
+        "214 failure(s); last reason NO_INDEX: An index the forced plan uses no longer exists.",
+        "text: SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1"
+      ],
+      "advice": [
+        "Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "plan_id": 55,
+        "failures": 214,
+        "reason": "NO_INDEX"
+      }
+    },
+    {
+      "check": "tempdb",
+      "title": "tempdb file layout: 4 data file(s), sizes not even",
+      "severity": "high",
+      "score": 65,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "4 data file(s): 8192 MB, 1024 MB, 1024 MB, 1024 MB",
+        "16 logical CPUs, so 8 files is the usual starting point",
+        "largest file is 8.0x the smallest"
+      ],
+      "advice": [
+        "Add data files until there are 8, all the same size.",
+        "Resize the files to the same size and growth increment so allocations spread evenly."
+      ],
+      "data": {
+        "data_files": 4,
+        "cpu_count": 16,
+        "sizes_mb": [
+          8192,
+          1024,
+          1024,
+          1024
+        ]
+      }
+    },
+    {
+      "check": "vlf",
+      "title": "Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP",
+      "severity": "medium",
+      "score": 60,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "2,300 VLFs in 24,576 MB of log (2100 active)",
+        "log autogrowth is 64 MB, which is how it got this many",
+        "log_reuse_wait_desc = LOG_BACKUP: The log cannot be truncated until the next log backup."
+      ],
+      "advice": [
+        "Shrink the log once and regrow it in a few large steps to rebuild the VLFs.",
+        "Set a fixed growth increment of 1024 to 8192 MB instead.",
+        "Check that log backups are running and succeeding (see the Agent jobs section)."
+      ],
+      "data": {
+        "database": "ReportsDB",
+        "vlf_count": 2300,
+        "log_reuse_wait": "LOG_BACKUP",
+        "recovery_model": "FULL"
+      }
+    },
+    {
+      "check": "querystore",
+      "title": "Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower",
+      "severity": "medium",
+      "score": 58,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "average duration 1950 ms now against 510 ms before (3.8x slower)",
+        "420 execution(s) recently, 9000 in the baseline window; about 605s lost",
+        "recent waits: Lock 91%, Tran Log IO 5%, Buffer IO 4%",
+        "2 plan(s) seen for this query",
+        "text: (@p0 int)SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId"
+      ],
+      "advice": [
+        "Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.",
+        "In Query Store, compare the plans for query 4412 and consider forcing the earlier one (sp_query_store_force_plan)."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "query_id": 4412,
+        "ratio": 3.82,
+        "recent_execs": 420
+      }
+    },
+    {
+      "check": "waits",
+      "title": "Wait: PAGELATCH_UP",
+      "severity": "medium",
+      "score": 50,
+      "detail": "Contention on a data page that is already in memory.",
+      "block": [],
+      "evidence": [
+        "17% of non-idle wait time (38000 ms over 5200 waits, 7.3 ms average)",
+        "3.8 tasks waiting on average during the sample",
+        "signal wait 2% of the wait time"
+      ],
+      "advice": [
+        "In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.",
+        "In a user database look for last-page insert hot spots."
+      ],
+      "data": {
+        "wait_type": "PAGELATCH_UP",
+        "category": "latch",
+        "wait_ms": 38000,
+        "tasks": 5200,
+        "signal_ms": 900,
+        "share_pct": 17.4
+      }
+    },
+    {
+      "check": "blocking",
+      "title": "Blocking: spid 93 is blocking 1 session(s)",
+      "severity": "medium",
+      "score": 49,
+      "detail": "Longest wait 6s.",
+      "block": [
+        "spid 93 [sleeping] CORP\\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker",
+        "`- spid 95 LCK_M_IX 6.0s svc_payroll@APP01 db=PayrollDB open_tran=1",
+        "     PAGE: 5:1:88213"
+      ],
+      "evidence": [
+        "oldest open transaction began 2023-03-14T09:46:05 (13m ago)",
+        "head blocker input buffer - Language Event: BEGIN TRAN; UPDATE dbo.Orders SET Status = 'HOLD' WHERE OrderId = 1042; -- TODO: commit after checking totals"
+      ],
+      "advice": [
+        "Find out why spid 93 is not finishing; KILL is the last resort."
+      ],
+      "data": {
+        "head_session_id": 93,
+        "victims": 1,
+        "longest_wait_s": 6.0
+      }
+    },
+    {
+      "check": "waits",
+      "title": "Wait: LCK_M_S",
+      "severity": "medium",
+      "score": 46,
+      "detail": "Sessions are blocked waiting for a lock held by someone else.",
+      "block": [],
+      "evidence": [
+        "10% of non-idle wait time (21000 ms over 6 waits, 3500.0 ms average)",
+        "2.1 tasks waiting on average during the sample",
+        "signal wait 0% of the wait time"
+      ],
+      "advice": [
+        "Look at the blocking section for the head blocker.",
+        "Check for open transactions left by the application."
+      ],
+      "data": {
+        "wait_type": "LCK_M_S",
+        "category": "locking",
+        "wait_ms": 21000,
+        "tasks": 6,
+        "signal_ms": 1,
+        "share_pct": 9.6
+      }
+    },
+    {
+      "check": "querystore",
+      "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
+      "severity": "medium",
+      "score": 45,
+      "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
+      "block": [],
+      "evidence": [
+        "3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.",
+        "text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC"
+      ],
+      "advice": [
+        "Look in the error log and extended events for the failure; unforce if it persists."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "plan_id": 71,
+        "failures": 3,
+        "reason": "GENERAL_FAILURE"
+      }
+    },
+    {
+      "check": "querystore",
+      "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
+      "severity": "medium",
+      "score": 44,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "average duration 24 ms now against 10 ms before (2.4x slower)",
+        "60 execution(s) recently, 1400 in the baseline window; about 1s lost",
+        "3 plan(s) seen for this query",
+        "text: SELECT e.EmployeeId, e.Name FROM dbo.Employee e WHERE e.Dept = @dept AND e.Active = 1"
+      ],
+      "advice": [
+        "In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan)."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "query_id": 5120,
+        "ratio": 2.4,
+        "recent_execs": 60
+      }
+    },
+    {
+      "check": "querystore",
+      "title": "Query Store in ReportsDB is not healthy",
+      "severity": "medium",
+      "score": 40,
+      "detail": "While Query Store is not collecting, the regression figures for this database go stale.",
+      "block": [],
+      "evidence": [
+        "storage is 96% used (960 of 1000 MB)"
+      ],
+      "advice": [
+        "Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE."
+      ],
+      "data": {
+        "database": "ReportsDB",
+        "state": "READ_WRITE",
+        "storage_used_pct": 96.0
+      }
+    },
+    {
+      "check": "agent",
+      "title": "Agent job running long: Purge Old Audit Rows (2h00m)",
+      "severity": "medium",
+      "score": 40,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "running for 2h00m and there is no run history to compare with",
+        "started 2023-03-14T08:00:00, now on step 1"
+      ],
+      "advice": [
+        "Check what the job's session is waiting on before deciding to stop it."
+      ],
+      "data": {
+        "job": "Purge Old Audit Rows",
+        "running_seconds": 7200
+      }
+    },
+    {
+      "check": "waits",
+      "title": "Wait: HADR_SYNC_COMMIT",
+      "severity": "low",
+      "score": 38,
+      "detail": "Commits on the primary wait for a synchronous secondary to harden the log.",
+      "block": [],
+      "evidence": [
+        "7% of non-idle wait time (16000 ms over 7600 waits, 2.1 ms average)",
+        "1.6 tasks waiting on average during the sample",
+        "signal wait 2% of the wait time"
+      ],
+      "advice": [
+        "Check log send queue, network latency and secondary log write latency.",
+        "See the availability group section of this report."
+      ],
+      "data": {
+        "wait_type": "HADR_SYNC_COMMIT",
+        "category": "ag",
+        "wait_ms": 16000,
+        "tasks": 7600,
+        "signal_ms": 400,
+        "share_pct": 7.3
+      }
+    },
+    {
+      "check": "agent",
+      "title": "Agent job failed: Nightly ETL Load (1x in 24h)",
+      "severity": "low",
+      "score": 35,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00",
+        "ran for 4540s before failing",
+        "failing step 3 (Load Fact Tables): error 1205, severity 13",
+        "Executed as user: CORP\\svc_sql. Transaction (Process ID 88) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction. [SQLSTATE 40001] (Error 1205). The step failed."
+      ],
+      "advice": [
+        "The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats."
+      ],
+      "data": {
+        "job": "Nightly ETL Load",
+        "failures": 1,
+        "window_hours": 24
+      }
+    },
+    {
+      "check": "waits",
+      "title": "Wait: WRITELOG",
+      "severity": "low",
+      "score": 33,
+      "detail": "Sessions are waiting for commit log blocks to be hardened to disk.",
+      "block": [],
+      "evidence": [
+        "7% of non-idle wait time (14500 ms over 8200 waits, 1.8 ms average)",
+        "1.4 tasks waiting on average during the sample",
+        "signal wait 8% of the wait time"
+      ],
+      "advice": [
+        "Check write latency on the log file (sys.dm_io_virtual_file_stats).",
+        "Look for many tiny autocommit transactions that could be batched."
+      ],
+      "data": {
+        "wait_type": "WRITELOG",
+        "category": "log",
+        "wait_ms": 14500,
+        "tasks": 8200,
+        "signal_ms": 1200,
+        "share_pct": 6.6
+      }
+    },
+    {
+      "check": "vlf",
+      "title": "Log: Staging has 640 VLFs",
+      "severity": "low",
+      "score": 20,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "640 VLFs in 6,144 MB of log (12 active)"
+      ],
+      "advice": [
+        "Shrink the log once and regrow it in a few large steps to rebuild the VLFs."
+      ],
+      "data": {
+        "database": "Staging",
+        "vlf_count": 640,
+        "log_reuse_wait": "NOTHING",
+        "recovery_model": "SIMPLE"
+      }
+    }
+  ],
+  "hidden": 0,
+  "errors": []
+}
