@@ -10,13 +10,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Run the tests
         run: python -m unittest discover -s tests -v
+      - name: Golden files are current
+        run: |
+          python -m tests.regen_golden
+          git diff --exit-code tests/golden
       - name: Replay the sample incident
         run: python -m sqltriage --fixtures tests/fixtures/incident1 -S SQLPROD01 -f markdown
