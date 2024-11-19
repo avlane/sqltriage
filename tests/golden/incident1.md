@@ -6,34 +6,34 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 
 | # | Severity | Score | Finding |
 |---|----------|-------|---------|
-| 1 | critical | 91 | Blocking: spid 57 is blocking 6 session(s) |
+| 1 | critical | 95 | Blocking: spid 57 is blocking 6 session(s) |
 | 2 | critical | 90 | Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION |
-| 3 | high | 76 | tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages |
-| 4 | high | 75 | Availability group PayrollAG: ReportsDB on SQLPROD02 is behind |
-| 5 | high | 75 | CPU scheduler pressure: runnable queue averages 3.6 per scheduler |
-| 6 | high | 71 | Wait: LCK_M_X |
+| 3 | high | 81 | tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages |
+| 4 | high | 75 | Availability group PayrollAG: PayrollDB on SQLDR02 is behind |
+| 5 | high | 75 | Availability group PayrollAG: ReportsDB on SQLPROD02 is behind |
+| 6 | high | 75 | CPU scheduler pressure: runnable queue averages 3.6 per scheduler |
 | 7 | high | 71 | Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h) |
 | 8 | high | 70 | tempdb is 90% full |
-| 9 | high | 70 | Availability group PayrollAG: PayrollDB on SQLDR02 is behind |
-| 10 | high | 70 | Availability group PayrollAG: replica SQLDR02 is unhealthy |
-| 11 | high | 68 | Agent job running long: IndexOptimize - USER_DATABASES (9h00m) |
-| 12 | high | 66 | Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd) |
-| 13 | high | 65 | tempdb file layout: 4 data file(s), sizes not even |
-| 14 | medium | 60 | Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP |
-| 15 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
-| 16 | medium | 50 | Wait: PAGELATCH_UP |
-| 17 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
-| 18 | medium | 46 | Wait: LCK_M_S |
-| 19 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
-| 20 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
-| 21 | medium | 40 | Query Store in ReportsDB is not healthy |
-| 22 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 23 | low | 38 | Wait: HADR_SYNC_COMMIT |
-| 24 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
-| 25 | low | 33 | Wait: WRITELOG |
+| 9 | high | 70 | Availability group PayrollAG: replica SQLDR02 is unhealthy |
+| 10 | high | 68 | Agent job running long: IndexOptimize - USER_DATABASES (9h00m) |
+| 11 | high | 66 | Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd) |
+| 12 | high | 65 | tempdb file layout: 4 data file(s), sizes not even |
+| 13 | medium | 60 | Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP |
+| 14 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
+| 15 | medium | 56 | Wait: LCK_M_X |
+| 16 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
+| 17 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
+| 18 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
+| 19 | medium | 40 | Query Store in ReportsDB is not healthy |
+| 20 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 21 | low | 35 | Wait: PAGELATCH_UP |
+| 22 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
+| 23 | low | 33 | Wait: WRITELOG |
+| 24 | low | 31 | Wait: LCK_M_S |
+| 25 | low | 28 | Wait: HADR_SYNC_COMMIT |
 | 26 | low | 20 | Log: Staging has 640 VLFs |
 
-**1. Blocking: spid 57 is blocking 6 session(s)** (critical, 91)
+**1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
 Longest wait 94s.
 
@@ -56,6 +56,7 @@ spid 57 [sleeping] svc_payroll@APP01 open_tran=1  <- head blocker
 - locks contended: dbo.PayRun.PK_PayRun (3 waiting), dbo.PayRunLine.IX_PayRunLine_PayRunId (3 waiting)
 - oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)
 - head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]
+- also shows up as: LCK_M_S, LCK_M_X
 
 Next steps:
 1. Find out why spid 57 is not finishing; KILL is the last resort.
@@ -71,7 +72,7 @@ Next steps:
 1. Set a fixed growth increment of 1024 to 8192 MB instead.
 1. Find the oldest open transaction (DBCC OPENTRAN) and check the blocking section.
 
-**3. tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages** (high, 76)
+**3. tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages** (high, 81)
 
 Sessions are queueing on tempdb's allocation bitmaps while creating or dropping temp objects.
 
@@ -81,12 +82,25 @@ Sessions are queueing on tempdb's allocation bitmaps while creating or dropping 
 - GAM   2:2:2  1 task(s) waiting, longest 6 ms
 - PFS   2:1:8088  1 task(s) waiting, longest 5 ms
 - other 2:1:1234  1 task(s) waiting, longest 4 ms
+- also shows up as: PAGELATCH_UP
 
 Next steps:
 1. Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).
 1. Look for code that creates and drops temp tables at a very high rate, or large table variables.
 
-**4. Availability group PayrollAG: ReportsDB on SQLPROD02 is behind** (high, 75)
+**4. Availability group PayrollAG: PayrollDB on SQLDR02 is behind** (high, 75)
+
+- log send queue 4.0 GB, no movement, so no estimate
+- redo queue 117 MB, no movement, so no estimate
+- secondary is 5400 s behind
+- synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
+- also shows up as: HADR_SYNC_COMMIT
+
+Next steps:
+1. Send queue growing: look at the network and the primary's log write rate.
+1. Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
+
+**5. Availability group PayrollAG: ReportsDB on SQLPROD02 is behind** (high, 75)
 
 - data movement is suspended (SUSPEND_FROM_USER)
 - synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
@@ -95,7 +109,7 @@ Next steps:
 1. Send queue growing: look at the network and the primary's log write rate.
 1. Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
 
-**5. CPU scheduler pressure: runnable queue averages 3.6 per scheduler** (high, 75)
+**6. CPU scheduler pressure: runnable queue averages 3.6 per scheduler** (high, 75)
 
 Tasks are waiting for CPU time.
 
@@ -110,18 +124,6 @@ Tasks are waiting for CPU time.
 Next steps:
 1. Find the top CPU consumers (sys.dm_exec_query_stats or Query Store).
 1. Check that the host is not CPU-starved by something outside SQL Server.
-
-**6. Wait: LCK_M_X** (high, 71)
-
-Sessions are blocked waiting for a lock held by someone else.
-
-- 42% of non-idle wait time (92000 ms over 14 waits, 6571.4 ms average)
-- 9.2 tasks waiting on average during the sample
-- signal wait 0% of the wait time
-
-Next steps:
-1. Look at the blocking section for the head blocker.
-1. Check for open transactions left by the application.
 
 **7. Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)** (high, 71)
 
@@ -143,18 +145,7 @@ Next steps:
 Next steps:
 1. The oldest active snapshot transaction stops the version store being cleaned: see the blocking section.
 
-**9. Availability group PayrollAG: PayrollDB on SQLDR02 is behind** (high, 70)
-
-- log send queue 4.0 GB, no movement, so no estimate
-- redo queue 117 MB, no movement, so no estimate
-- secondary is 5400 s behind
-- synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
-
-Next steps:
-1. Send queue growing: look at the network and the primary's log write rate.
-1. Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
-
-**10. Availability group PayrollAG: replica SQLDR02 is unhealthy** (high, 70)
+**9. Availability group PayrollAG: replica SQLDR02 is unhealthy** (high, 70)
 
 - SECONDARY, ASYNCHRONOUS_COMMIT (manual failover)
 - replica is DISCONNECTED
@@ -165,7 +156,7 @@ Next steps:
 1. Check the network path and the endpoint (port 5022 by default) between the replicas.
 1. Look at the replica's error log around the time it disconnected.
 
-**11. Agent job running long: IndexOptimize - USER_DATABASES (9h00m)** (high, 68)
+**10. Agent job running long: IndexOptimize - USER_DATABASES (9h00m)** (high, 68)
 
 - running for 9h00m against a usual 2h00m (4.5x)
 - started 2023-03-14T00:30:00, now on step 1
@@ -173,7 +164,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**12. Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)** (high, 66)
+**11. Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)** (high, 66)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -183,7 +174,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one.
 
-**13. tempdb file layout: 4 data file(s), sizes not even** (high, 65)
+**12. tempdb file layout: 4 data file(s), sizes not even** (high, 65)
 
 - 4 data file(s): 8192 MB, 1024 MB, 1024 MB, 1024 MB
 - 16 logical CPUs, so 8 files is the usual starting point
@@ -193,7 +184,7 @@ Next steps:
 1. Add data files until there are 8, all the same size.
 1. Resize the files to the same size and growth increment so allocations spread evenly.
 
-**14. Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP** (medium, 60)
+**13. Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP** (medium, 60)
 
 - 2,300 VLFs in 24,576 MB of log (2100 active)
 - log autogrowth is 64 MB, which is how it got this many
@@ -204,7 +195,7 @@ Next steps:
 1. Set a fixed growth increment of 1024 to 8192 MB instead.
 1. Check that log backups are running and succeeding (see the Agent jobs section).
 
-**15. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
+**14. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
 
 - average duration 1950 ms now against 510 ms before (3.8x slower)
 - 420 execution(s) recently, 9000 in the baseline window; about 605s lost
@@ -216,19 +207,20 @@ Next steps:
 1. Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.
 1. In Query Store, compare the plans for query 4412 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**16. Wait: PAGELATCH_UP** (medium, 50)
+**15. Wait: LCK_M_X** (medium, 56)
 
-Contention on a data page that is already in memory.
+Sessions are blocked waiting for a lock held by someone else.
 
-- 17% of non-idle wait time (38000 ms over 5200 waits, 7.3 ms average)
-- 3.8 tasks waiting on average during the sample
-- signal wait 2% of the wait time
+- 42% of non-idle wait time (92000 ms over 14 waits, 6571.4 ms average)
+- 9.2 tasks waiting on average during the sample
+- signal wait 0% of the wait time
+- probably the same problem as: Blocking: spid 57 is blocking 6 session(s)
 
 Next steps:
-1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
-1. In a user database look for last-page insert hot spots.
+1. Look at the blocking section for the head blocker.
+1. Check for open transactions left by the application.
 
-**17. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
+**16. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
 
 Longest wait 6s.
 
@@ -244,19 +236,7 @@ spid 93 [sleeping] CORP\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker
 Next steps:
 1. Find out why spid 93 is not finishing; KILL is the last resort.
 
-**18. Wait: LCK_M_S** (medium, 46)
-
-Sessions are blocked waiting for a lock held by someone else.
-
-- 10% of non-idle wait time (21000 ms over 6 waits, 3500.0 ms average)
-- 2.1 tasks waiting on average during the sample
-- signal wait 0% of the wait time
-
-Next steps:
-1. Look at the blocking section for the head blocker.
-1. Check for open transactions left by the application.
-
-**19. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
+**17. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -266,7 +246,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Look in the error log and extended events for the failure; unforce if it persists.
 
-**20. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
+**18. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
 
 - average duration 24 ms now against 10 ms before (2.4x slower)
 - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
@@ -276,7 +256,7 @@ Next steps:
 Next steps:
 1. In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**21. Query Store in ReportsDB is not healthy** (medium, 40)
+**19. Query Store in ReportsDB is not healthy** (medium, 40)
 
 While Query Store is not collecting, the regression figures for this database go stale.
 
@@ -285,7 +265,7 @@ While Query Store is not collecting, the regression figures for this database go
 Next steps:
 1. Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
 
-**22. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**20. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -293,19 +273,20 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**23. Wait: HADR_SYNC_COMMIT** (low, 38)
+**21. Wait: PAGELATCH_UP** (low, 35)
 
-Commits on the primary wait for a synchronous secondary to harden the log.
+Contention on a data page that is already in memory.
 
-- 7% of non-idle wait time (16000 ms over 7600 waits, 2.1 ms average)
-- 1.6 tasks waiting on average during the sample
+- 17% of non-idle wait time (38000 ms over 5200 waits, 7.3 ms average)
+- 3.8 tasks waiting on average during the sample
 - signal wait 2% of the wait time
+- probably the same problem as: tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages
 
 Next steps:
-1. Check log send queue, network latency and secondary log write latency.
-1. See the availability group section of this report.
+1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
+1. In a user database look for last-page insert hot spots.
 
-**24. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
+**22. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
 - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
 - ran for 4540s before failing
@@ -315,7 +296,7 @@ Next steps:
 Next steps:
 1. The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
 
-**25. Wait: WRITELOG** (low, 33)
+**23. Wait: WRITELOG** (low, 33)
 
 Sessions are waiting for commit log blocks to be hardened to disk.
 
@@ -326,6 +307,32 @@ Sessions are waiting for commit log blocks to be hardened to disk.
 Next steps:
 1. Check write latency on the log file (sys.dm_io_virtual_file_stats).
 1. Look for many tiny autocommit transactions that could be batched.
+
+**24. Wait: LCK_M_S** (low, 31)
+
+Sessions are blocked waiting for a lock held by someone else.
+
+- 10% of non-idle wait time (21000 ms over 6 waits, 3500.0 ms average)
+- 2.1 tasks waiting on average during the sample
+- signal wait 0% of the wait time
+- probably the same problem as: Blocking: spid 57 is blocking 6 session(s)
+
+Next steps:
+1. Look at the blocking section for the head blocker.
+1. Check for open transactions left by the application.
+
+**25. Wait: HADR_SYNC_COMMIT** (low, 28)
+
+Commits on the primary wait for a synchronous secondary to harden the log.
+
+- 7% of non-idle wait time (16000 ms over 7600 waits, 2.1 ms average)
+- 1.6 tasks waiting on average during the sample
+- signal wait 2% of the wait time
+- probably the same problem as: Availability group PayrollAG: PayrollDB on SQLDR02 is behind
+
+Next steps:
+1. Check log send queue, network latency and secondary log write latency.
+1. See the availability group section of this report.
 
 **26. Log: Staging has 640 VLFs** (low, 20)
 
