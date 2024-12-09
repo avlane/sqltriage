@@ -296,6 +296,7 @@ def run(ctx):
                 else [],
                 data={
                     "head_session_id": head.session_id,
+                    "databases": sorted({n.database for n in [head] + victims if n.database}),
                     "victims": len(victims),
                     "longest_wait_s": round(longest, 1),
                 },

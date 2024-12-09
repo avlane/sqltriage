@@ -57,6 +57,7 @@ spid 57 [sleeping] svc_payroll@APP01 open_tran=1  <- head blocker
 - oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)
 - head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]
 - also shows up as: LCK_M_S, LCK_M_X
+- also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
 
 Next steps:
 1. Find out why spid 57 is not finishing; KILL is the last resort.
@@ -66,6 +67,7 @@ Next steps:
 - 18,432 VLFs in 61,440 MB of log (17900 active)
 - log autogrowth is 10%, which is how it got this many
 - log_reuse_wait_desc = ACTIVE_TRANSACTION: An open transaction is holding the start of the log.
+- the open transaction holding the log is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)
 
 Next steps:
 1. Shrink the log once and regrow it in a few large steps to rebuild the VLFs.

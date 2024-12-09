@@ -85,5 +85,40 @@ class CorrelateTests(unittest.TestCase):
         self.assertEqual(symptom.score, 45)
 
 
+class LogTests(unittest.TestCase):
+    def vlf(self, wait, database="PayrollDB", score=60):
+        return Finding("vlf", "Log: {} has log reuse wait {}".format(database, wait), score,
+                       data={"database": database, "log_reuse_wait": wait})
+
+    def test_open_transaction_is_tied_to_the_blocking_chain(self):
+        log = self.vlf("ACTIVE_TRANSACTION")
+        chain = Finding("blocking", "Blocking: spid 57", 80, data={"databases": ["PayrollDB"]})
+        correlate.apply([log, chain])
+        self.assertEqual(log.score, 60)  # not a symptom to score down
+        self.assertEqual(log.evidence, ["the open transaction holding the log is probably the head blocker in: Blocking: spid 57"])
+        self.assertEqual(chain.score, 85)
+        self.assertEqual(chain.evidence, ["also shows up as: Log: PayrollDB has log reuse wait ACTIVE_TRANSACTION"])
+
+    def test_other_databases_are_not_tied(self):
+        log = self.vlf("ACTIVE_TRANSACTION", database="Other")
+        chain = Finding("blocking", "Blocking: spid 57", 80, data={"databases": ["PayrollDB"]})
+        correlate.apply([log, chain])
+        self.assertEqual((log.evidence, chain.score), ([], 80))
+
+    def test_secondary_behind(self):
+        log = self.vlf("AVAILABILITY_REPLICA", database="Sales")
+        behind = Finding("ag", "Sales on R2 is behind", 70, data={"database": "Sales", "log_send_queue_kb": 9000})
+        elsewhere = Finding("ag", "Other on R2 is behind", 90, data={"database": "Other", "log_send_queue_kb": 9000})
+        correlate.apply([log, behind, elsewhere])
+        self.assertEqual(log.evidence, ["the log cannot be reused while a secondary is behind: Sales on R2 is behind"])
+        self.assertEqual((behind.score, elsewhere.score), (75, 90))
+
+    def test_a_low_scoring_finding_is_not_raised_by_a_zero_demotion(self):
+        log = self.vlf("ACTIVE_TRANSACTION", score=3)
+        chain = Finding("blocking", "Blocking", 80, data={"databases": ["PayrollDB"]})
+        correlate.apply([log, chain])
+        self.assertEqual(log.score, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

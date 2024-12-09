@@ -171,6 +171,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual([f.data["head_session_id"] for f in findings], [57, 93])
         big, small = findings
         self.assertEqual(big.data["victims"], 6)
+        self.assertEqual(big.data["databases"], ["PayrollDB"])
         self.assertEqual(big.data["longest_wait_s"], 94.0)
         self.assertGreater(big.score, small.score)
         self.assertGreaterEqual(big.score, 65)

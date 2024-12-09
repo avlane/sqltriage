@@ -39,13 +39,17 @@
         "locks contended: dbo.PayRun.PK_PayRun (3 waiting), dbo.PayRunLine.IX_PayRunLine_PayRunId (3 waiting)",
         "oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)",
         "head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]",
-        "also shows up as: LCK_M_S, LCK_M_X"
+        "also shows up as: LCK_M_S, LCK_M_X",
+        "also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION"
       ],
       "advice": [
         "Find out why spid 57 is not finishing; KILL is the last resort."
       ],
       "data": {
         "head_session_id": 57,
+        "databases": [
+          "PayrollDB"
+        ],
         "victims": 6,
         "longest_wait_s": 94.0
       }
@@ -60,7 +64,8 @@
       "evidence": [
         "18,432 VLFs in 61,440 MB of log (17900 active)",
         "log autogrowth is 10%, which is how it got this many",
-        "log_reuse_wait_desc = ACTIVE_TRANSACTION: An open transaction is holding the start of the log."
+        "log_reuse_wait_desc = ACTIVE_TRANSACTION: An open transaction is holding the start of the log.",
+        "the open transaction holding the log is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)"
       ],
       "advice": [
         "Shrink the log once and regrow it in a few large steps to rebuild the VLFs.",
@@ -402,6 +407,9 @@
       ],
       "data": {
         "head_session_id": 93,
+        "databases": [
+          "PayrollDB"
+        ],
         "victims": 1,
         "longest_wait_s": 6.0
       }
