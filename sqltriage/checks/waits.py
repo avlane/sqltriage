@@ -73,22 +73,47 @@ def was_reset(before, after):
 
 
 def sample(ctx):
-    """Take the two snapshots once per run and share the result.
+    """Take the snapshots once per run and share the result.
 
-    If the counters were reset in between, the delta is empty and
+    With ``ctx.samples`` above one, the interval is repeated that many times.
+    The delta covers the whole span and ``ctx.cache["waits_intervals"]`` holds
+    each interval's wait time per wait type, so a trend can be shown.  If the
+    counters were reset at any point the delta is empty and
     ``ctx.cache["waits_reset"]`` is set so ``run`` can say why.
     """
     if "waits" not in ctx.cache:
-        before = snapshot(ctx)
+        snapshots = [snapshot(ctx)]
         started = ctx.clock()
-        ctx.sleep(ctx.interval)
-        after = snapshot(ctx)
+        for _ in range(max(1, ctx.samples)):
+            ctx.sleep(ctx.interval)
+            snapshots.append(snapshot(ctx))
         # The queries take time too, so rates use what really passed.
         ctx.cache["waits_elapsed"] = max(ctx.clock() - started, 0.001)
-        reset = was_reset(before, after)
+        reset = any(was_reset(a, b) for a, b in zip(snapshots, snapshots[1:]))
         ctx.cache["waits_reset"] = reset
-        ctx.cache["waits"] = [] if reset else compute_delta(before, after)
+        ctx.cache["waits"] = [] if reset else compute_delta(snapshots[0], snapshots[-1])
+        ctx.cache["waits_intervals"] = (
+            []
+            if reset
+            else [{d.wait_type: d.wait_ms for d in compute_delta(a, b)} for a, b in zip(snapshots, snapshots[1:])]
+        )
     return ctx.cache["waits"]
+
+
+RISING = 1.5
+FALLING = 1 / 1.5
+
+
+def trend(values):
+    """'rising', 'falling' or 'steady' from per-interval wait times."""
+    if len(values) < 2 or not values[0]:
+        return "steady" if len(values) < 2 or values[-1] == values[0] else "rising"
+    ratio = values[-1] / float(values[0])
+    if ratio >= RISING:
+        return "rising"
+    if ratio <= FALLING:
+        return "falling"
+    return "steady"
 
 
 def significant(deltas):
@@ -131,13 +156,19 @@ def run(ctx):
             ),
             "{:.1f} tasks waiting on average during the sample".format(d.wait_ms / interval_ms),
         ]
+        intervals = ctx.cache.get("waits_intervals") or []
+        direction = None
+        if len(intervals) > 1:
+            series = [i.get(d.wait_type, 0) for i in intervals]
+            direction = trend(series)
+            evidence.append("per interval: {} ms ({})".format(", ".join(str(v) for v in series), direction))
         if d.wait_ms and d.signal_ms:
             evidence.append("signal wait {:.0f}% of the wait time".format(100.0 * d.signal_ms / d.wait_ms))
         findings.append(
             Finding(
                 check=NAME,
                 title="Wait: {}".format(d.wait_type),
-                score=score_wait(d, share, interval_ms),
+                score=min(95, score_wait(d, share, interval_ms) + (5 if direction == "rising" else 0)),
                 detail=info.text,
                 evidence=evidence,
                 advice=list(info.advice),

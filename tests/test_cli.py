@@ -91,6 +91,13 @@ class CliTests(unittest.TestCase):
         code, _ = self.run_cli()
         self.assertEqual(code, 0)
 
+    def test_samples_option(self):
+        _, text = self.run_cli("--only", "waits", "--samples", "2")
+        # the recorded fixture holds two snapshots, so a third one cannot be replayed
+        self.assertIn("no fixture for waits_snapshot", text)
+        code, _ = self.run_cli("--only", "waits", "--samples", "0")
+        self.assertEqual(code, 0)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

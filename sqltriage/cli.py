@@ -30,6 +30,7 @@ def build_parser():
     parser.add_argument("--record", metavar="DIR", help="also save every query result to DIR as replayable fixtures")
     parser.add_argument("--fixtures", metavar="DIR", help="replay recorded query results instead of connecting")
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
+    parser.add_argument("--samples", type=int, default=1, help="how many consecutive intervals to sample (shows a trend)")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
     parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
     parser.add_argument("--min-severity", choices=[label for _, label in reversed(LEVELS)], default="info",
@@ -89,7 +90,7 @@ def main(argv=None, out=None):
         value = getattr(args, name)
         if value:
             options[name] = [d.strip() for d in value.split(",") if d.strip()]
-    ctx = Context(source, interval=args.interval, top=args.top, options=options)
+    ctx = Context(source, interval=args.interval, top=args.top, samples=max(1, args.samples), options=options)
     if args.fixtures:
         clock = ManualClock()  # recorded samples are already apart in time
         ctx.sleep, ctx.clock = clock.sleep, clock.now

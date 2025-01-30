@@ -26,6 +26,7 @@ class Context:
     source: Source
     interval: float = 10.0
     top: int = 5
+    samples: int = 1  # consecutive intervals for the wait stats
     sleep: Callable = time.sleep
     clock: Callable = time.monotonic
     options: Dict = field(default_factory=dict)

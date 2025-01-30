@@ -39,7 +39,7 @@ ARGUMENT_KEYS = {
         "trust_server_cert": "trust_server_cert",
         "no_encrypt": "no_encrypt",
     },
-    "sample": {"interval": "interval", "top": "top"},
+    "sample": {"interval": "interval", "top": "top", "samples": "samples"},
     "output": {"format": "format", "min_severity": "min_severity", "fail_on": "fail_on"},
 }
 

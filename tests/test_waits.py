@@ -41,6 +41,67 @@ class DeltaTests(unittest.TestCase):
         self.assertEqual([d.wait_type for d in waits.compute_delta(before, after)], ["B", "C", "A"])
 
 
+class Ramp(FixtureSource):
+    """Cumulative counters where WRITELOG waits grow by the given amounts each interval."""
+
+    def __init__(self, increments):
+        super().__init__(FIXTURES)
+        self.increments = increments
+        self.calls = 0
+
+    def fetch(self, name, sql, params=(), database=None):
+        total = sum(self.increments[: self.calls])
+        self.calls += 1
+        return [row("WRITELOG", 10 * self.calls, 1000 + total, 0, 5), row("SLEEP_TASK", 1, 1 + self.calls * 1000)]
+
+
+class TrendTests(unittest.TestCase):
+    def run_waits(self, increments):
+        ctx = Context(Ramp(increments), interval=10, samples=len(increments), sleep=lambda s: None, top=3)
+        return ctx, waits.run(ctx)
+
+    def test_trend_words(self):
+        self.assertEqual(waits.trend([100, 160]), "rising")
+        self.assertEqual(waits.trend([100, 60]), "falling")
+        self.assertEqual(waits.trend([100, 110, 120]), "steady")
+        self.assertEqual(waits.trend([5]), "steady")
+        self.assertEqual(waits.trend([0, 50]), "rising")
+        self.assertEqual(waits.trend([0, 0]), "steady")
+
+    def test_rising_wait_is_shown_and_scored_up(self):
+        _, rising = self.run_waits([1000, 2000, 4000])
+        _, steady = self.run_waits([2000, 2000, 2000])
+        self.assertIn("per interval: 1000, 2000, 4000 ms (rising)", rising[0].evidence)
+        self.assertIn("per interval: 2000, 2000, 2000 ms (steady)", steady[0].evidence)
+        self.assertEqual(rising[0].score - steady[0].score, 5)
+
+    def test_the_delta_covers_the_whole_span(self):
+        ctx, (finding,) = self.run_waits([1000, 2000, 4000])
+        self.assertEqual(finding.data["wait_ms"], 7000)
+
+    def test_one_sample_has_no_trend_line(self):
+        _, (finding,) = self.run_waits([1000])
+        self.assertFalse(any("per interval" in e for e in finding.evidence))
+
+    def test_sleeps_once_per_interval(self):
+        slept = []
+        ctx = Context(Ramp([1, 1, 1]), interval=5, samples=3, sleep=slept.append)
+        waits.sample(ctx)
+        self.assertEqual(slept, [5, 5, 5])
+
+    def test_a_reset_in_any_interval_discards_everything(self):
+        class Reset(Ramp):
+            def fetch(inner, name, sql, params=(), database=None):
+                rows = super().fetch(name, sql, params, database)
+                if inner.calls == 3:
+                    rows[0] = row("WRITELOG", 1, 5)
+                return rows
+
+        ctx = Context(Reset([1000, 1000, 1000]), interval=10, samples=3, sleep=lambda s: None)
+        self.assertEqual(waits.sample(ctx), [])
+        self.assertTrue(ctx.cache["waits_reset"])
+
+
 class ResetTests(unittest.TestCase):
     def test_counters_going_backwards(self):
         before = {"WRITELOG": row("WRITELOG", 100, 500)}
