@@ -98,6 +98,38 @@ class CliTests(unittest.TestCase):
         code, _ = self.run_cli("--only", "waits", "--samples", "0")
         self.assertEqual(code, 0)
 
+    def test_output_file_and_format_from_extension(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "report.md")
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                code, stdout = self.run_cli("--only", "vlf", "-o", path)
+            self.assertEqual((code, stdout), (0, ""))
+            self.assertIn("wrote " + path, err.getvalue())
+            with open(path, encoding="utf-8") as handle:
+                self.assertTrue(handle.read().startswith("### sqltriage report"))
+            self.assertEqual(os.listdir(tmp), ["report.md"])  # no temporary file left behind
+
+    def test_explicit_format_beats_the_extension(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "report.md")
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.run_cli("--only", "vlf", "-o", path, "-f", "json")
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(json.load(handle)["schema_version"], 1)
+
+    def test_choose_format(self):
+        from sqltriage.cli import choose_format
+
+        parse = build_parser().parse_args
+        self.assertEqual(choose_format(parse([])), "text")
+        self.assertEqual(choose_format(parse(["-o", "x.JSON"])), "json")
+        self.assertEqual(choose_format(parse(["-o", "x.out"])), "text")
+        self.assertEqual(choose_format(parse(["-o", "x.md", "-f", "text"])), "text")
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

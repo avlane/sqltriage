@@ -32,7 +32,8 @@ def build_parser():
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
     parser.add_argument("--samples", type=int, default=1, help="how many consecutive intervals to sample (shows a trend)")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
-    parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
+    parser.add_argument("-f", "--format", choices=sorted(FORMATS), help="text (default), json or markdown")
+    parser.add_argument("-o", "--output", metavar="FILE", help="write the report to FILE instead of standard output")
     parser.add_argument("--min-severity", choices=[label for _, label in reversed(LEVELS)], default="info",
                         help="hide findings ranked below this severity")
     parser.add_argument("--databases", help="comma separated databases to look at (default: all)")
@@ -53,6 +54,26 @@ def connection_string(args):
         encrypt=not args.no_encrypt,
         trust_server_certificate=args.trust_server_cert,
     )
+
+
+EXTENSION_FORMATS = {".md": "markdown", ".markdown": "markdown", ".json": "json", ".txt": "text"}
+
+
+def choose_format(args):
+    """--format if given, else guessed from the output file's extension, else text."""
+    if args.format:
+        return args.format
+    if args.output:
+        return EXTENSION_FORMATS.get(os.path.splitext(args.output)[1].lower(), "text")
+    return "text"
+
+
+def write_output(path, text):
+    """Write the report next to its final name first, so a reader never sees half of it."""
+    temporary = path + ".tmp"
+    with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    os.replace(temporary, path)
 
 
 def main(argv=None, out=None):
@@ -101,5 +122,10 @@ def main(argv=None, out=None):
     failing = args.fail_on is not None and any(f.severity_rank >= severity_rank(args.fail_on) for f in report.findings)
     if args.min_severity != "info":
         report = filter_report(report, args.min_severity)
-    out.write(FORMATS[args.format](report))
+    text = FORMATS[choose_format(args)](report)
+    if args.output:
+        write_output(args.output, text)
+        sys.stderr.write("wrote {}\n".format(args.output))
+    else:
+        out.write(text)
     return 1 if failing else 0
