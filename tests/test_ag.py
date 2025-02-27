@@ -113,6 +113,28 @@ class DatabaseProblemTests(unittest.TestCase):
         self.assertEqual(score, 70)
 
 
+class EstimateTests(unittest.TestCase):
+    def test_data_loss(self):
+        row = database(last_commit_time="2025-02-25T10:00:00", primary_last_commit_time="2025-02-25T10:07:30")
+        self.assertEqual(ag.estimated_data_loss(row), 450)
+
+    def test_data_loss_accepts_datetimes_and_never_goes_negative(self):
+        import datetime
+
+        early = datetime.datetime(2025, 2, 25, 10, 0, 0)
+        row = database(last_commit_time=early + datetime.timedelta(seconds=5), primary_last_commit_time=early)
+        self.assertEqual(ag.estimated_data_loss(row), 0)
+
+    def test_data_loss_unknown_without_a_primary_time(self):
+        self.assertIsNone(ag.estimated_data_loss(database(last_commit_time="2025-02-25T10:00:00")))
+        self.assertIsNone(ag.estimated_data_loss(database(primary_last_commit_time="2025-02-25T10:00:00")))
+
+    def test_recovery(self):
+        self.assertEqual(ag.estimated_recovery(database(redo_queue_size=120000, redo_rate=40)), 3000)
+        self.assertEqual(ag.estimated_recovery(database(redo_queue_size=0, redo_rate=None)), 0)
+        self.assertIsNone(ag.estimated_recovery(database(redo_queue_size=500, redo_rate=None)))
+
+
 class DatabaseFindingTests(unittest.TestCase):
     def test_incident(self):
         findings = ag.database_findings(Context(FixtureSource(FIXTURES)))
@@ -120,6 +142,11 @@ class DatabaseFindingTests(unittest.TestCase):
         self.assertEqual(keys, [("SQLPROD02", "ReportsDB"), ("SQLDR02", "PayrollDB")])
         self.assertEqual([f.score for f in findings], [75, 70])
         self.assertIn("synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)", findings[1].evidence)
+        dr = findings[1]
+        self.assertIn("a failover to this replica now would lose about 1h30m", dr.evidence)
+        self.assertIn("it would need about 50m to finish redo before the database is available", dr.evidence)
+        self.assertEqual((dr.data["estimated_data_loss_s"], dr.data["estimated_recovery_s"]), (5400, 3000))
+        self.assertTrue(any("would lose about 38m" in e for e in findings[0].evidence))
 
 
 if __name__ == "__main__":

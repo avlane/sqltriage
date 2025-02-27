@@ -114,8 +114,10 @@
       "block": [],
       "evidence": [
         "log send queue 4.0 GB, no movement, so no estimate",
-        "redo queue 117 MB, no movement, so no estimate",
+        "redo queue 117 MB, about 50 min at the current rate",
         "secondary is 5400 s behind",
+        "a failover to this replica now would lose about 1h30m",
+        "it would need about 50m to finish redo before the database is available",
         "synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)",
         "also shows up as: HADR_SYNC_COMMIT"
       ],
@@ -128,7 +130,9 @@
         "replica": "SQLDR02",
         "database": "PayrollDB",
         "log_send_queue_kb": 4200000,
-        "redo_queue_kb": 120000
+        "redo_queue_kb": 120000,
+        "estimated_data_loss_s": 5400,
+        "estimated_recovery_s": 3000
       }
     },
     {
@@ -140,6 +144,7 @@
       "block": [],
       "evidence": [
         "data movement is suspended (SUSPEND_FROM_USER)",
+        "a failover to this replica now would lose about 38m",
         "synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)"
       ],
       "advice": [
@@ -151,7 +156,9 @@
         "replica": "SQLPROD02",
         "database": "ReportsDB",
         "log_send_queue_kb": 0,
-        "redo_queue_kb": 0
+        "redo_queue_kb": 0,
+        "estimated_data_loss_s": 2282,
+        "estimated_recovery_s": 0
       }
     },
     {

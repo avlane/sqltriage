@@ -1,6 +1,7 @@
 """Availability group health: replicas, and the send and redo queues of each database."""
 from collections import OrderedDict
 
+from ..fmt import span, to_datetime
 from ..models import Finding
 from ..scoring import step_score
 
@@ -43,6 +44,11 @@ SELECT ag.name AS ag_name,
        drs.redo_queue_size,
        drs.redo_rate,
        drs.last_commit_time,
+       (SELECT MAX(p.last_commit_time)
+        FROM sys.dm_hadr_database_replica_states AS p
+        WHERE p.group_id = drs.group_id
+          AND p.group_database_id = drs.group_database_id
+          AND p.is_primary_replica = 1) AS primary_last_commit_time,
        drs.secondary_lag_seconds
 FROM sys.dm_hadr_database_replica_states AS drs
 JOIN sys.availability_replicas AS ar
@@ -120,6 +126,27 @@ def database_problems(row):
     return problems
 
 
+def estimated_data_loss(row):
+    """Seconds of committed work missing on the secondary, or None if unknown.
+
+    The gap between the last commit the primary has and the last one this
+    secondary has hardened is what a forced failover to it would lose.
+    """
+    primary = to_datetime(row.get("primary_last_commit_time"))
+    secondary = to_datetime(row.get("last_commit_time"))
+    if primary is None or secondary is None:
+        return None
+    return max(0, int((primary - secondary).total_seconds()))
+
+
+def estimated_recovery(row):
+    """Seconds the secondary needs to redo what it already has, or None if it is not redoing."""
+    queue, rate = row.get("redo_queue_size") or 0, row.get("redo_rate") or 0
+    if not queue:
+        return 0
+    return int(queue / float(rate)) if rate else None
+
+
 def database_findings(ctx):
     findings = []
     for row in ctx.source.fetch("ag_databases", DATABASE_SQL):
@@ -129,6 +156,14 @@ def database_findings(ctx):
         if not problems:
             continue
         evidence = [text for _, text in problems]
+        loss = estimated_data_loss(row)
+        if loss:
+            evidence.append("a failover to this replica now would lose about {}".format(span(loss) if loss >= 60 else "{} s".format(loss)))
+        recovery = estimated_recovery(row)
+        if recovery:
+            evidence.append("it would need about {} to finish redo before the database is available".format(span(recovery)))
+        elif recovery is None:
+            evidence.append("redo is not moving, so there is no recovery time estimate")
         evidence.append("synchronization state {} ({})".format(
             row["synchronization_state_desc"], row["synchronization_health_desc"]))
         findings.append(
@@ -149,6 +184,8 @@ def database_findings(ctx):
                     "database": row["database_name"],
                     "log_send_queue_kb": row.get("log_send_queue_size"),
                     "redo_queue_kb": row.get("redo_queue_size"),
+                    "estimated_data_loss_s": loss,
+                    "estimated_recovery_s": recovery,
                 },
             )
         )

@@ -93,8 +93,10 @@ Next steps:
 **4. Availability group PayrollAG: PayrollDB on SQLDR02 is behind** (high, 75)
 
 - log send queue 4.0 GB, no movement, so no estimate
-- redo queue 117 MB, no movement, so no estimate
+- redo queue 117 MB, about 50 min at the current rate
 - secondary is 5400 s behind
+- a failover to this replica now would lose about 1h30m
+- it would need about 50m to finish redo before the database is available
 - synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
 - also shows up as: HADR_SYNC_COMMIT
 
@@ -105,6 +107,7 @@ Next steps:
 **5. Availability group PayrollAG: ReportsDB on SQLPROD02 is behind** (high, 75)
 
 - data movement is suspended (SUSPEND_FROM_USER)
+- a failover to this replica now would lose about 38m
 - synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
 
 Next steps:

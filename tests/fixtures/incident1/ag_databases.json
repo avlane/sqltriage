@@ -11,8 +11,9 @@
     "log_send_rate": 21000,
     "redo_queue_size": 8192,
     "redo_rate": 18000,
-    "last_commit_time": "2023-03-14T09:58:02",
-    "secondary_lag_seconds": 0
+    "last_commit_time": "2023-03-14T09:58:01",
+    "secondary_lag_seconds": 0,
+    "primary_last_commit_time": "2023-03-14T09:58:02"
   },
   {
     "ag_name": "PayrollAG",
@@ -26,8 +27,9 @@
     "log_send_rate": null,
     "redo_queue_size": 0,
     "redo_rate": null,
-    "last_commit_time": "2023-03-14T09:58:02",
-    "secondary_lag_seconds": null
+    "last_commit_time": "2023-03-14T09:20:00",
+    "secondary_lag_seconds": null,
+    "primary_last_commit_time": "2023-03-14T09:58:02"
   },
   {
     "ag_name": "PayrollAG",
@@ -40,8 +42,9 @@
     "log_send_queue_size": 4200000,
     "log_send_rate": null,
     "redo_queue_size": 120000,
-    "redo_rate": null,
-    "last_commit_time": "2023-03-14T09:58:02",
-    "secondary_lag_seconds": 5400
+    "redo_rate": 40,
+    "last_commit_time": "2023-03-14T08:28:02",
+    "secondary_lag_seconds": 5400,
+    "primary_last_commit_time": "2023-03-14T09:58:02"
   }
 ]

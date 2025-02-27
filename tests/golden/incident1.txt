@@ -43,14 +43,17 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       > Look for code that creates and drops temp tables at a very high rate, or large table variables.
  4. [HIGH 75] Availability group PayrollAG: PayrollDB on SQLDR02 is behind
       - log send queue 4.0 GB, no movement, so no estimate
-      - redo queue 117 MB, no movement, so no estimate
+      - redo queue 117 MB, about 50 min at the current rate
       - secondary is 5400 s behind
+      - a failover to this replica now would lose about 1h30m
+      - it would need about 50m to finish redo before the database is available
       - synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
       - also shows up as: HADR_SYNC_COMMIT
       > Send queue growing: look at the network and the primary's log write rate.
       > Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
  5. [HIGH 75] Availability group PayrollAG: ReportsDB on SQLPROD02 is behind
       - data movement is suspended (SUSPEND_FROM_USER)
+      - a failover to this replica now would lose about 38m
       - synchronization state NOT SYNCHRONIZING (NOT_HEALTHY)
       > Send queue growing: look at the network and the primary's log write rate.
       > Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
