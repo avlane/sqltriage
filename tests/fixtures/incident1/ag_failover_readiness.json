@@ -1,0 +1,62 @@
+[
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD01",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "PayrollDB",
+    "is_failover_ready": 1,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD01",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "ReportsDB",
+    "is_failover_ready": 1,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD02",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "PayrollDB",
+    "is_failover_ready": 1,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLPROD02",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "ReportsDB",
+    "is_failover_ready": 0,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLDR02",
+    "availability_mode_desc": "ASYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "MANUAL",
+    "database_name": "PayrollDB",
+    "is_failover_ready": 0,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "PayrollAG",
+    "replica_server_name": "SQLDR02",
+    "availability_mode_desc": "ASYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "MANUAL",
+    "database_name": "ReportsDB",
+    "is_failover_ready": 0,
+    "is_database_joined": 0,
+    "is_pending_secondary_suspend": 0
+  }
+]

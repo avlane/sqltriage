@@ -30,6 +30,24 @@ JOIN sys.dm_hadr_availability_replica_states AS ars
  AND ars.group_id = ar.group_id
 ORDER BY ag.name, ars.role_desc, ar.replica_server_name;"""
 
+# Would a failover work right now?  is_failover_ready is only expected to be
+# true for synchronous replicas whose databases are synchronized.
+FAILOVER_SQL = """\
+SELECT ag.name AS ag_name,
+       ar.replica_server_name,
+       ar.availability_mode_desc,
+       ar.failover_mode_desc,
+       drcs.database_name,
+       drcs.is_failover_ready,
+       drcs.is_database_joined,
+       drcs.is_pending_secondary_suspend
+FROM sys.dm_hadr_database_replica_cluster_states AS drcs
+JOIN sys.availability_replicas AS ar
+  ON ar.replica_id = drcs.replica_id
+JOIN sys.availability_groups AS ag
+  ON ag.group_id = ar.group_id
+ORDER BY ag.name, ar.replica_server_name, drcs.database_name;"""
+
 # Per database and secondary replica.  Queue sizes are in KB, rates in KB/s.
 DATABASE_SQL = """\
 SELECT ag.name AS ag_name,
@@ -192,6 +210,47 @@ def database_findings(ctx):
     return findings
 
 
+def failover_findings(ctx):
+    """Replicas that could not take over: not ready (synchronous) or not joined (any)."""
+    replicas = OrderedDict()
+    for row in ctx.source.fetch("ag_failover_readiness", FAILOVER_SQL):
+        if not ctx.wants_database(row["database_name"]):
+            continue
+        replicas.setdefault((row["ag_name"], row["replica_server_name"]), []).append(row)
+    findings = []
+    for (ag_name, replica), rows in replicas.items():
+        synchronous = rows[0]["availability_mode_desc"] == "SYNCHRONOUS_COMMIT"
+        automatic = rows[0]["failover_mode_desc"] == "AUTOMATIC"
+        not_joined = [r["database_name"] for r in rows if not r["is_database_joined"]]
+        not_ready = [r["database_name"] for r in rows if synchronous and r["is_database_joined"] and not r["is_failover_ready"]]
+        if not not_joined and not not_ready:
+            continue
+        evidence = []
+        score = 0
+        if not_ready:
+            evidence.append("not failover ready: " + ", ".join(not_ready))
+            score = 80 if automatic else 50
+            evidence.append(
+                "automatic failover to this replica would NOT happen"
+                if automatic
+                else "a planned manual failover to this replica would lose data or be refused"
+            )
+        if not_joined:
+            evidence.append("not joined to the group: " + ", ".join(not_joined))
+            score = max(score, 60)
+        findings.append(
+            Finding(
+                check=NAME,
+                title="Availability group {}: failover to {} is not ready".format(ag_name, replica),
+                score=score,
+                evidence=evidence,
+                advice=["Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica."],
+                data={"ag": ag_name, "replica": replica, "not_ready": not_ready, "not_joined": not_joined},
+            )
+        )
+    return findings
+
+
 def replica_findings(ctx):
     rows = ctx.source.fetch("ag_replicas", REPLICA_SQL)
     groups = OrderedDict()
@@ -232,4 +291,4 @@ def replica_findings(ctx):
 
 
 def run(ctx):
-    return replica_findings(ctx) + database_findings(ctx)
+    return replica_findings(ctx) + database_findings(ctx) + failover_findings(ctx)

@@ -113,6 +113,43 @@ class DatabaseProblemTests(unittest.TestCase):
         self.assertEqual(score, 70)
 
 
+class FailoverTests(unittest.TestCase):
+    def serve(self, rows):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return rows if name == "ag_failover_readiness" else []
+
+        return Context(Fake(FIXTURES))
+
+    def row(self, **overrides):
+        base = {"ag_name": "AG1", "replica_server_name": "R2", "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+                "failover_mode_desc": "AUTOMATIC", "database_name": "Sales", "is_failover_ready": 1,
+                "is_database_joined": 1, "is_pending_secondary_suspend": 0}
+        base.update(overrides)
+        return base
+
+    def test_incident(self):
+        findings = ag.failover_findings(Context(FixtureSource(FIXTURES)))
+        self.assertEqual([(f.data["replica"], f.score) for f in findings], [("SQLPROD02", 80), ("SQLDR02", 60)])
+        self.assertEqual(findings[0].data["not_ready"], ["ReportsDB"])
+        self.assertIn("automatic failover to this replica would NOT happen", findings[0].evidence)
+        self.assertEqual(findings[1].data["not_joined"], ["ReportsDB"])
+        self.assertEqual(findings[1].data["not_ready"], [])  # asynchronous: never ready, not a fault
+
+    def test_ready_replica(self):
+        self.assertEqual(ag.failover_findings(self.serve([self.row()])), [])
+
+    def test_manual_failover_scores_lower(self):
+        (finding,) = ag.failover_findings(self.serve([self.row(failover_mode_desc="MANUAL", is_failover_ready=0)]))
+        self.assertEqual(finding.score, 50)
+        self.assertIn("planned manual failover", finding.evidence[1])
+
+    def test_database_filter_applies(self):
+        ctx = self.serve([self.row(is_failover_ready=0)])
+        ctx.options["exclude_databases"] = ["sales"]
+        self.assertEqual(ag.failover_findings(ctx), [])
+
+
 class EstimateTests(unittest.TestCase):
     def test_data_loss(self):
         row = database(last_commit_time="2025-02-25T10:00:00", primary_last_commit_time="2025-02-25T10:07:30")

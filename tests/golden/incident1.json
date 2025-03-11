@@ -107,6 +107,29 @@
     },
     {
       "check": "ag",
+      "title": "Availability group PayrollAG: failover to SQLPROD02 is not ready",
+      "severity": "high",
+      "score": 80,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "not failover ready: ReportsDB",
+        "automatic failover to this replica would NOT happen"
+      ],
+      "advice": [
+        "Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica."
+      ],
+      "data": {
+        "ag": "PayrollAG",
+        "replica": "SQLPROD02",
+        "not_ready": [
+          "ReportsDB"
+        ],
+        "not_joined": []
+      }
+    },
+    {
+      "check": "ag",
       "title": "Availability group PayrollAG: PayrollDB on SQLDR02 is behind",
       "severity": "high",
       "score": 75,
@@ -341,6 +364,28 @@
         "vlf_count": 2300,
         "log_reuse_wait": "LOG_BACKUP",
         "recovery_model": "FULL"
+      }
+    },
+    {
+      "check": "ag",
+      "title": "Availability group PayrollAG: failover to SQLDR02 is not ready",
+      "severity": "medium",
+      "score": 60,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "not joined to the group: ReportsDB"
+      ],
+      "advice": [
+        "Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica."
+      ],
+      "data": {
+        "ag": "PayrollAG",
+        "replica": "SQLDR02",
+        "not_ready": [],
+        "not_joined": [
+          "ReportsDB"
+        ]
       }
     },
     {
