@@ -37,7 +37,7 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - PFS   2:3:1  3 task(s) waiting, longest 15 ms
       - GAM   2:2:2  1 task(s) waiting, longest 6 ms
       - PFS   2:1:8088  1 task(s) waiting, longest 5 ms
-      - other 2:1:1234  1 task(s) waiting, longest 4 ms
+      - other 2:1:1234  1 task(s) waiting, longest 4 ms - DATA_PAGE of system table object_id 34
       - also shows up as: PAGELATCH_UP
       > Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).
       > Look for code that creates and drops temp tables at a very high rate, or large table variables.

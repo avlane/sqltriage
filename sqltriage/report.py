@@ -1,9 +1,8 @@
 """Run the checks and rank what they found."""
 import datetime
 
-from . import instance
-from .checks import CHECKS
 from . import correlate
+from .checks import CHECKS
 from .models import LEVELS
 from .scoring import rank
 
@@ -36,4 +35,4 @@ def build_report(ctx, server, names=None, now=None):
             findings.extend(CHECKS[name].run(ctx))
         except Exception as exc:  # one broken check must not sink the report
             errors.append("{}: {}".format(name, exc))
-    return Report(server, rank(correlate.apply(findings), CHECKS), errors, now or datetime.datetime.now(), instance.load(ctx.source))
+    return Report(server, rank(correlate.apply(findings), CHECKS), errors, now or datetime.datetime.now(), ctx.instance_info())

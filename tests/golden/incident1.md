@@ -85,7 +85,7 @@ Sessions are queueing on tempdb's allocation bitmaps while creating or dropping 
 - PFS   2:3:1  3 task(s) waiting, longest 15 ms
 - GAM   2:2:2  1 task(s) waiting, longest 6 ms
 - PFS   2:1:8088  1 task(s) waiting, longest 5 ms
-- other 2:1:1234  1 task(s) waiting, longest 4 ms
+- other 2:1:1234  1 task(s) waiting, longest 4 ms - DATA_PAGE of system table object_id 34
 - also shows up as: PAGELATCH_UP
 
 Next steps:

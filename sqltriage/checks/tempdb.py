@@ -62,6 +62,18 @@ FREE_SPACE_LEVELS = [(5, 90), (10, 70), (20, 45)]
 MAX_RECOMMENDED_FILES = 8
 SIZE_TOLERANCE = 1.1  # largest file may be this much bigger than the smallest
 
+# SQL Server 2019 and later can say what a page belongs to.  LIMITED reads only
+# the page header, so it is cheap and takes no latch.
+PAGE_INFO_SQL = """\
+SELECT page_type_desc,
+       object_id,
+       OBJECT_NAME(object_id, 2) AS object_name,
+       index_id
+FROM sys.dm_db_page_info(2, ?, ?, 'LIMITED');"""
+
+PAGE_INFO_MIN_MAJOR = 15
+PAGE_INFO_LIMIT = 5  # pages to look up per run
+
 _RESOURCE = re.compile(r"^(\d+):(\d+):(\d+)")
 
 
@@ -184,6 +196,39 @@ def run(ctx):
     return findings + contention_findings(ctx)
 
 
+def describe_page(row):
+    """'DATA_PAGE of system table object_id 34' and the like."""
+    object_id = row.get("object_id")
+    if row.get("object_name"):
+        owner = "object " + row["object_name"]
+    elif object_id is None:
+        owner = "an unknown object"
+    elif 0 < object_id < 100:
+        owner = "system table object_id {}".format(object_id)
+    elif object_id < 0:
+        owner = "temp object_id {}".format(object_id)
+    else:
+        owner = "object_id {}".format(object_id)
+    return "{} of {}".format(row.get("page_type_desc") or "page", owner)
+
+
+def page_descriptions(ctx, groups):
+    """(file, page) -> description, for the busiest non-allocation pages, where the server can say."""
+    major = ctx.server_major()
+    if major is None or major < PAGE_INFO_MIN_MAJOR:
+        return {}
+    others = sorted(((k, v) for k, v in groups.items() if k[0] == "other"), key=lambda kv: -len(kv[1]))
+    found = {}
+    for (kind, file_id, page_id), _ in others[:PAGE_INFO_LIMIT]:
+        try:
+            rows = ctx.source.fetch("tempdb_page_info_{}_{}".format(file_id, page_id), PAGE_INFO_SQL, (file_id, page_id))
+        except SourceError:
+            continue
+        if rows:
+            found[(file_id, page_id)] = describe_page(rows[0])
+    return found
+
+
 def contention_findings(ctx):
     rows = ctx.source.fetch("tempdb_latch_waits", LATCH_SQL)
     groups = summarize(rows)
@@ -194,10 +239,12 @@ def contention_findings(ctx):
     other_tasks = sum(len(v) for k, v in groups.items() if k[0] == "other")
     longest = max(max(v) for v in groups.values())
     evidence = []
+    described = page_descriptions(ctx, groups)
     for (kind, file_id, page_id), waits in sorted(groups.items(), key=lambda kv: -len(kv[1])):
-        evidence.append(
-            "{:<5} 2:{}:{}  {} task(s) waiting, longest {} ms".format(kind, file_id, page_id, len(waits), max(waits))
-        )
+        line = "{:<5} 2:{}:{}  {} task(s) waiting, longest {} ms".format(kind, file_id, page_id, len(waits), max(waits))
+        if (file_id, page_id) in described:
+            line += " - " + described[(file_id, page_id)]
+        evidence.append(line)
     if alloc_tasks:
         score = 30 + min(40, alloc_tasks * 4) + min(20, longest / 5.0)
         title = "tempdb allocation contention: {} task(s) waiting on PFS/GAM/SGAM pages".format(alloc_tasks)
@@ -210,7 +257,7 @@ def contention_findings(ctx):
         score = 15 + min(20, other_tasks * 2)
         title = "tempdb page latch waits on {} task(s), none on allocation pages".format(other_tasks)
         detail = "Latch waits on other tempdb pages, which are usually system table (metadata) pages."
-        advice = ["Check the object being hit with sys.dm_db_page_info or DBCC PAGE."]
+        advice = ["Latches on tempdb's own system tables mean heavy temp object churn; see which statements create and drop the most."]
     return [
         Finding(
             check=NAME,

@@ -3,7 +3,7 @@ import unittest
 
 from sqltriage.checks import tempdb
 from sqltriage.context import Context
-from sqltriage.source import FixtureSource
+from sqltriage.source import FixtureSource, SourceError
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -35,6 +35,54 @@ def files(sizes, cpus=16, percent=False):
         {"file_id": i + 1, "name": "f%d" % i, "size_mb": s, "growth_mb": 64, "is_percent_growth": int(percent), "cpu_count": cpus}
         for i, s in enumerate(sizes)
     ]
+
+
+class PageInfoTests(unittest.TestCase):
+    def test_describe(self):
+        self.assertEqual(tempdb.describe_page({"page_type_desc": "DATA_PAGE", "object_id": 34}), "DATA_PAGE of system table object_id 34")
+        self.assertEqual(tempdb.describe_page({"page_type_desc": "DATA_PAGE", "object_id": -98765}), "DATA_PAGE of temp object_id -98765")
+        self.assertEqual(tempdb.describe_page({"page_type_desc": "INDEX_PAGE", "object_id": 5000}), "INDEX_PAGE of object_id 5000")
+        self.assertEqual(tempdb.describe_page({"page_type_desc": "DATA_PAGE", "object_id": 7, "object_name": "sysallocunits"}), "DATA_PAGE of object sysallocunits")
+        self.assertEqual(tempdb.describe_page({}), "page of an unknown object")
+
+    def test_incident_names_the_other_page(self):
+        (finding,) = tempdb.contention_findings(Context(FixtureSource(FIXTURES)))
+        self.assertIn("other 2:1:1234  1 task(s) waiting, longest 4 ms - DATA_PAGE of system table object_id 34", finding.evidence)
+        self.assertFalse(any(" - " in e for e in finding.evidence if e.startswith(("PFS", "GAM", "SGAM"))))
+
+    def test_old_servers_are_not_asked(self):
+        class Old(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "instance_info":
+                    return [{"major_version": 14, "product_version": "14.0.1", "edition": "x", "cpu_count": 4,
+                             "sqlserver_start_time": "2025-03-01T00:00:00", "server_name": "S", "is_hadr_enabled": 0}]
+                if name.startswith("tempdb_page_info"):
+                    raise AssertionError("dm_db_page_info does not exist before 2019")
+                return super().fetch(name, sql, params, database)
+
+        (finding,) = tempdb.contention_findings(Context(Old(FIXTURES)))
+        self.assertTrue(any(e.startswith("other") for e in finding.evidence))
+
+    def test_unknown_version_is_not_asked(self):
+        class Silent(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "instance_info":
+                    raise SourceError("denied")
+                if name.startswith("tempdb_page_info"):
+                    raise AssertionError("should not ask")
+                return super().fetch(name, sql, params, database)
+
+        tempdb.contention_findings(Context(Silent(FIXTURES)))
+
+    def test_lookup_failure_is_not_fatal(self):
+        class Failing(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name.startswith("tempdb_page_info"):
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        (finding,) = tempdb.contention_findings(Context(Failing(FIXTURES)))
+        self.assertTrue(any(e.startswith("other 2:1:1234  1 task(s) waiting, longest 4 ms") and " - " not in e for e in finding.evidence))
 
 
 class LayoutTests(unittest.TestCase):
@@ -132,6 +180,8 @@ class RunTests(unittest.TestCase):
     def test_non_allocation_waits_score_low(self):
         class Meta(FixtureSource):
             def fetch(self, name, sql, params=(), database=None):
+                if name != "tempdb_latch_waits":
+                    return []
                 return [{"session_id": 60, "wait_type": "PAGELATCH_EX", "wait_duration_ms": 3, "resource_description": "2:1:777"}]
 
         (finding,) = tempdb.contention_findings(Context(Meta(FIXTURES)))

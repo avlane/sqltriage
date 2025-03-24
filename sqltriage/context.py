@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable, Dict
 
+from . import instance
 from .source import Source
 
 
@@ -32,6 +33,17 @@ class Context:
     options: Dict = field(default_factory=dict)
     # results one check wants to share with another (for example the wait delta)
     cache: Dict = field(default_factory=dict)
+
+    def instance_info(self):
+        """The instance facts (see instance.py), fetched once; None if unreadable."""
+        if "instance" not in self.cache:
+            self.cache["instance"] = instance.load(self.source)
+        return self.cache["instance"]
+
+    def server_major(self):
+        """Major version number (15 for SQL Server 2019), or None if unknown."""
+        info = self.instance_info()
+        return info.get("major_version") if info else None
 
     def job_ignored(self, name):
         """True if an Agent job name matches an --ignore-jobs pattern (shell style, any case)."""
