@@ -1,8 +1,9 @@
 """Allocation page contention in tempdb.
 
 Many sessions creating and dropping temp objects at once pile up on the pages
-that track free space: PFS (page 1 and every 8088th page after), GAM (page 2
-and every 511232nd page after) and SGAM (page 3 and every 511232nd after).
+that track free space: PFS (page 1, then every 8088th page), GAM (page 2, then
+every 511232nd page: 511232, 1022464, ...) and SGAM (page 3, then the page after
+each GAM: 511233, 1022465, ...).
 The waits show up as PAGELATCH_* on resource 2:<file>:<page>.
 """
 import re
@@ -88,9 +89,9 @@ def parse_resource(text):
 def page_kind(page_id):
     if page_id == 1 or (page_id > 1 and page_id % PFS_INTERVAL == 0):
         return "PFS"
-    if page_id == 2 or (page_id > 2 and (page_id - 2) % GAM_INTERVAL == 0):
+    if page_id == 2 or (page_id > 2 and page_id % GAM_INTERVAL == 0):
         return "GAM"
-    if page_id == 3 or (page_id > 3 and (page_id - 3) % GAM_INTERVAL == 0):
+    if page_id == 3 or (page_id > 3 and (page_id - 1) % GAM_INTERVAL == 0):
         return "SGAM"
     return "other"
 

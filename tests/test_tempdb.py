@@ -16,9 +16,16 @@ class PageKindTests(unittest.TestCase):
 
     def test_gam_and_sgam(self):
         self.assertEqual(tempdb.page_kind(2), "GAM")
-        self.assertEqual(tempdb.page_kind(511234), "GAM")
+        self.assertEqual(tempdb.page_kind(511232), "GAM")
+        self.assertEqual(tempdb.page_kind(1022464), "GAM")
         self.assertEqual(tempdb.page_kind(3), "SGAM")
-        self.assertEqual(tempdb.page_kind(511235), "SGAM")
+        self.assertEqual(tempdb.page_kind(511233), "SGAM")
+        self.assertEqual(tempdb.page_kind(1022465), "SGAM")
+
+    def test_pages_the_old_arithmetic_got_wrong(self):
+        # GAM and SGAM follow the 511232 interval from page 0, not from their first page
+        self.assertEqual(tempdb.page_kind(511234), "other")
+        self.assertEqual(tempdb.page_kind(511235), "other")
 
     def test_ordinary_page(self):
         self.assertEqual(tempdb.page_kind(1234), "other")
