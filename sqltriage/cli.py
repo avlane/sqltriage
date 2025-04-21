@@ -41,6 +41,8 @@ def build_parser():
     parser.add_argument("--ignore-jobs", help="comma separated Agent job name patterns to skip, such as 'Purge*'")
     parser.add_argument("--fail-on", choices=[label for _, label in reversed(LEVELS)],
                         help="exit with status 1 if any finding is at least this severe")
+    parser.add_argument("--blocking-min-wait", type=float, metavar="SECONDS",
+                        help="ignore sessions blocked for less than this long (default 2)")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -111,6 +113,8 @@ def main(argv=None, out=None):
         value = getattr(args, name)
         if value:
             options[name] = [d.strip() for d in value.split(",") if d.strip()]
+    if args.blocking_min_wait is not None:
+        options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
     ctx = Context(source, interval=args.interval, top=args.top, samples=max(1, args.samples), options=options)
     if args.fixtures:
         clock = ManualClock()  # recorded samples are already apart in time

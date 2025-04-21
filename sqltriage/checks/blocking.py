@@ -108,8 +108,37 @@ class Node:
         return found
 
 
-def build_chains(rows):
+DEFAULT_MIN_WAIT_MS = 2000
+
+
+def drop_blips(rows, min_wait_ms):
+    """Remove sessions that have only been blocked for a moment.
+
+    Blocking that clears by itself in under a second or two is normal on a busy
+    system and floods the report.  A short waiter stays if it is itself holding
+    up someone who has waited longer.
+    """
+    rows = list(rows)
+    while True:
+        blockers = {r["blocking_session_id"] for r in rows if (r.get("blocking_session_id") or 0) > 0}
+        kept = []
+        for r in rows:
+            blocked_by = r.get("blocking_session_id") or 0
+            if blocked_by > 0:
+                keep = (r.get("wait_time_ms") or 0) >= min_wait_ms or r["session_id"] in blockers
+            else:
+                # not blocked: a head blocker, which only matters while it blocks someone
+                keep = blocked_by < 0 or r["session_id"] in blockers
+            if keep:
+                kept.append(r)
+        if len(kept) == len(rows):
+            return kept
+        rows = kept
+
+
+def build_chains(rows, min_wait_ms=0):
     """Link sessions to the sessions blocking them; return the head blockers."""
+    rows = drop_blips(rows, min_wait_ms) if min_wait_ms else rows
     nodes = {row["session_id"]: Node(row["session_id"], row) for row in rows}
     for node in list(nodes.values()):
         if node.blocker is not None:
@@ -125,7 +154,7 @@ def build_chains(rows):
         reached.add(head.session_id)
         reached.update(n.session_id for n in head.descendants())
     while True:
-        lost = [n for n in nodes.values() if n.session_id not in reached]
+        lost = [n for n in nodes.values() if n.blocker is not None and n.session_id not in reached]
         if not lost:
             break
         start = max(lost, key=lambda n: (n.wait_ms, -n.session_id))
@@ -255,7 +284,7 @@ def score_chain(head, age_seconds=None):
 def run(ctx):
     rows = ctx.source.fetch("blocking_sessions", SESSIONS_SQL)
     findings = []
-    for head in build_chains(rows):
+    for head in build_chains(rows, ctx.options.get("blocking_min_wait_ms", DEFAULT_MIN_WAIT_MS)):
         victims = head.descendants()
         longest = max([v.wait_ms for v in victims] or [0]) / 1000.0
         if head.cycle:

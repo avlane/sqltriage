@@ -46,6 +46,7 @@ ARGUMENT_KEYS = {
 # section -> {key: Context.options name}
 OPTION_KEYS = {
     "agent": {"hours": "agent_hours", "ignore": "ignore_jobs"},
+    "blocking": {"min_wait_ms": "blocking_min_wait_ms"},
     "querystore": {
         "recent_hours": "qs_recent_hours",
         "lookback_hours": "qs_lookback_hours",

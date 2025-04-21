@@ -130,6 +130,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual(choose_format(parse(["-o", "x.out"])), "text")
         self.assertEqual(choose_format(parse(["-o", "x.md", "-f", "text"])), "text")
 
+    def test_blocking_min_wait_flag(self):
+        _, text = self.run_cli("--only", "blocking", "--blocking-min-wait", "30")
+        self.assertIn("spid 57 is blocking 3 session(s)", text)
+        self.assertNotIn("spid 93", text)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

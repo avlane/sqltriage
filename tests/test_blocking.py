@@ -50,6 +50,36 @@ class ChainTests(unittest.TestCase):
         self.assertIn("KEY: 5:1 (abc)", lines[2])
 
 
+class BlipTests(unittest.TestCase):
+    def test_short_waits_are_dropped(self):
+        rows = [session(1), session(2, 1, 300), session(3, 1, 400)]
+        self.assertEqual(blocking.build_chains(rows, 2000), [])
+        self.assertEqual(len(blocking.build_chains(rows)), 1)
+
+    def test_long_waiters_stay_with_their_head(self):
+        rows = [session(1), session(2, 1, 300), session(3, 1, 5000)]
+        (head,) = blocking.build_chains(rows, 2000)
+        self.assertEqual([n.session_id for n in head.descendants()], [3])
+
+    def test_a_short_waiter_that_blocks_a_long_one_stays(self):
+        rows = [session(1), session(2, 1, 500), session(3, 2, 6000)]
+        (head,) = blocking.build_chains(rows, 2000)
+        self.assertEqual(sorted(n.session_id for n in head.descendants()), [2, 3])
+
+    def test_system_blockers_are_kept(self):
+        (head,) = blocking.build_chains([session(5, -2, 100)], 2000)
+        self.assertEqual(head.system_blocker, -2)
+
+    def test_threshold_option_reaches_the_check(self):
+        quiet = Context(FixtureSource(FIXTURES), options={"blocking_min_wait_ms": 10000})
+        findings = blocking.run(quiet)
+        self.assertEqual([f.data["victims"] for f in findings], [5])  # spid 81 (4s) and the 6 s one on spid 93 dropped out
+        self.assertEqual(len(findings), 1)
+
+    def test_default_threshold_keeps_the_fixture(self):
+        self.assertEqual(len(blocking.run(Context(FixtureSource(FIXTURES)))), 2)
+
+
 class CycleTests(unittest.TestCase):
     def ring(self):
         return [
@@ -57,6 +87,9 @@ class CycleTests(unittest.TestCase):
             session(11, 10, 9000, wait_type="LCK_M_S"),
             session(12, 11, 1000, wait_type="LCK_M_U"),
         ]
+
+    def test_an_idle_session_is_not_mistaken_for_a_ring(self):
+        self.assertEqual(blocking.build_chains([session(7, status=None)]), [])
 
     def test_ring_is_not_lost(self):
         (head,) = blocking.build_chains(self.ring())
