@@ -295,6 +295,30 @@
       }
     },
     {
+      "check": "memory",
+      "title": "3 queries waiting for a memory grant",
+      "severity": "high",
+      "score": 68,
+      "detail": "Queries cannot start until memory is granted; this shows as RESOURCE_SEMAPHORE waits.",
+      "block": [],
+      "evidence": [
+        "3 request(s) have waited up to 48s for a memory grant; together they want 12.0 GB",
+        "pool 2 semaphore 0: 21.0 of 22.0 GB granted, 3 waiting, 4 grant timeout(s), 0 forced grant(s)",
+        "spid 131 wants 6.0 GB at dop 8 (next in line): SELECT * FROM dbo.PayRunLine l JOIN dbo.PayRun p ON p.PayRunId = l.PayRunId ORDER BY l.Amount DESC",
+        "spid 140 wants 4.0 GB at dop 4: SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre",
+        "spid 152 wants 2.0 GB at dop 4: SELECT DISTINCT EmployeeId, TaxYear FROM dbo.PayRunLine"
+      ],
+      "advice": [
+        "Look at what holds the granted memory (below, if it is over-granted) and at big sorts and hashes with bad estimates.",
+        "Update statistics or add the missing index so the optimizer asks for less."
+      ],
+      "data": {
+        "waiting": 3,
+        "longest_wait_s": 48.0,
+        "requested_gb": 12.0
+      }
+    },
+    {
       "check": "querystore",
       "title": "Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)",
       "severity": "high",
@@ -313,6 +337,25 @@
         "plan_id": 55,
         "failures": 214,
         "reason": "NO_INDEX"
+      }
+    },
+    {
+      "check": "memory",
+      "title": "spid 112 holds a 12.0 GB memory grant and uses 1.0 GB",
+      "severity": "high",
+      "score": 66,
+      "detail": "An over-sized grant starves other queries of workspace memory.",
+      "block": [],
+      "evidence": [
+        "dop 8; SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre"
+      ],
+      "advice": [
+        "An estimate far above reality caused this: check statistics and parameter sniffing for this query."
+      ],
+      "data": {
+        "session_id": 112,
+        "granted_kb": 12582912,
+        "used_kb": 1048576
       }
     },
     {

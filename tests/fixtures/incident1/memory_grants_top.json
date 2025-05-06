@@ -1,0 +1,26 @@
+[
+  {
+    "session_id": 112,
+    "wait_time_ms": 0,
+    "requested_memory_kb": 12582912,
+    "granted_memory_kb": 12582912,
+    "used_memory_kb": 1048576,
+    "ideal_memory_kb": 12582912,
+    "dop": 8,
+    "wait_order": 1,
+    "is_next_candidate": 0,
+    "statement_text": "SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre"
+  },
+  {
+    "session_id": 98,
+    "wait_time_ms": 0,
+    "requested_memory_kb": 524288,
+    "granted_memory_kb": 524288,
+    "used_memory_kb": 400000,
+    "ideal_memory_kb": 524288,
+    "dop": 1,
+    "wait_order": 1,
+    "is_next_candidate": 0,
+    "statement_text": "SELECT pr.PayRunId, SUM(l.Amount) FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId GROUP BY pr.PayRunId"
+  }
+]

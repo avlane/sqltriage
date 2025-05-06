@@ -1,0 +1,22 @@
+[
+  {
+    "pool_id": 2,
+    "resource_semaphore_id": 0,
+    "target_memory_kb": 23068672,
+    "available_memory_kb": 1048576,
+    "granted_memory_kb": 22020096,
+    "waiter_count": 3,
+    "timeout_error_count": 4,
+    "forced_grant_count": 0
+  },
+  {
+    "pool_id": 2,
+    "resource_semaphore_id": 1,
+    "target_memory_kb": 2097152,
+    "available_memory_kb": 2097152,
+    "granted_memory_kb": 0,
+    "waiter_count": 0,
+    "timeout_error_count": 0,
+    "forced_grant_count": 0
+  }
+]

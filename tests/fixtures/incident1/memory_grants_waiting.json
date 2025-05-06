@@ -1,0 +1,38 @@
+[
+  {
+    "session_id": 131,
+    "wait_time_ms": 48000,
+    "requested_memory_kb": 6291456,
+    "granted_memory_kb": null,
+    "used_memory_kb": null,
+    "ideal_memory_kb": 6291456,
+    "dop": 8,
+    "wait_order": 1,
+    "is_next_candidate": 1,
+    "statement_text": "SELECT * FROM dbo.PayRunLine l JOIN dbo.PayRun p ON p.PayRunId = l.PayRunId ORDER BY l.Amount DESC"
+  },
+  {
+    "session_id": 140,
+    "wait_time_ms": 31000,
+    "requested_memory_kb": 4194304,
+    "granted_memory_kb": null,
+    "used_memory_kb": null,
+    "ideal_memory_kb": 4194304,
+    "dop": 4,
+    "wait_order": 2,
+    "is_next_candidate": 0,
+    "statement_text": "SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre"
+  },
+  {
+    "session_id": 152,
+    "wait_time_ms": 9000,
+    "requested_memory_kb": 2097152,
+    "granted_memory_kb": null,
+    "used_memory_kb": null,
+    "ideal_memory_kb": 2097152,
+    "dop": 4,
+    "wait_order": 3,
+    "is_next_candidate": 0,
+    "statement_text": "SELECT DISTINCT EmployeeId, TaxYear FROM dbo.PayRunLine"
+  }
+]
