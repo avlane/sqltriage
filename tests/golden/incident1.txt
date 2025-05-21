@@ -201,7 +201,11 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: Blocking: spid 57 is blocking 6 session(s)
       > Look at the blocking section for the head blocker.
       > Check for open transactions left by the application.
-29. [LOW 28] Wait: HADR_SYNC_COMMIT
+29. [LOW 30] max server memory is not set on a 64 GB host
+    SQL Server will grow until the OS has to push back, which is a bad time to find out.
+      - max server memory (MB) is the default 2147483647
+      > Set it to leave several GB (more on big hosts) for the OS and anything else running there.
+30. [LOW 28] Wait: HADR_SYNC_COMMIT
     Commits on the primary wait for a synchronous secondary to harden the log.
       - 7% of non-idle wait time (16000 ms over 7600 waits, 2.1 ms average)
       - 1.6 tasks waiting on average during the sample
@@ -209,6 +213,10 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: Availability group PayrollAG: PayrollDB on SQLDR02 is behind
       > Check log send queue, network latency and secondary log write latency.
       > See the availability group section of this report.
-30. [LOW 20] Log: Staging has 640 VLFs
+31. [LOW 25] Page life expectancy is 180 seconds
+    Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
+      - Buffer Manager: Page life expectancy = 180
+      > Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
+32. [LOW 20] Log: Staging has 640 VLFs
       - 640 VLFs in 6,144 MB of log (12 active)
       > Shrink the log once and regrow it in a few large steps to rebuild the VLFs.

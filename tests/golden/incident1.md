@@ -34,8 +34,10 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 26 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
 | 27 | low | 33 | Wait: WRITELOG |
 | 28 | low | 31 | Wait: LCK_M_S |
-| 29 | low | 28 | Wait: HADR_SYNC_COMMIT |
-| 30 | low | 20 | Log: Staging has 640 VLFs |
+| 29 | low | 30 | max server memory is not set on a 64 GB host |
+| 30 | low | 28 | Wait: HADR_SYNC_COMMIT |
+| 31 | low | 25 | Page life expectancy is 180 seconds |
+| 32 | low | 20 | Log: Staging has 640 VLFs |
 
 **1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
@@ -368,7 +370,16 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**29. Wait: HADR_SYNC_COMMIT** (low, 28)
+**29. max server memory is not set on a 64 GB host** (low, 30)
+
+SQL Server will grow until the OS has to push back, which is a bad time to find out.
+
+- max server memory (MB) is the default 2147483647
+
+Next steps:
+1. Set it to leave several GB (more on big hosts) for the OS and anything else running there.
+
+**30. Wait: HADR_SYNC_COMMIT** (low, 28)
 
 Commits on the primary wait for a synchronous secondary to harden the log.
 
@@ -381,7 +392,16 @@ Next steps:
 1. Check log send queue, network latency and secondary log write latency.
 1. See the availability group section of this report.
 
-**30. Log: Staging has 640 VLFs** (low, 20)
+**31. Page life expectancy is 180 seconds** (low, 25)
+
+Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
+
+- Buffer Manager: Page life expectancy = 180
+
+Next steps:
+1. Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
+
+**32. Log: Staging has 640 VLFs** (low, 20)
 
 - 640 VLFs in 6,144 MB of log (12 active)
 

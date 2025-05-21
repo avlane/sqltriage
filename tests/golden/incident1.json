@@ -691,6 +691,24 @@
       }
     },
     {
+      "check": "memory",
+      "title": "max server memory is not set on a 64 GB host",
+      "severity": "low",
+      "score": 30,
+      "detail": "SQL Server will grow until the OS has to push back, which is a bad time to find out.",
+      "block": [],
+      "evidence": [
+        "max server memory (MB) is the default 2147483647"
+      ],
+      "advice": [
+        "Set it to leave several GB (more on big hosts) for the OS and anything else running there."
+      ],
+      "data": {
+        "max_server_memory_mb": 2147483647,
+        "total_gb": 64.0
+      }
+    },
+    {
       "check": "waits",
       "title": "Wait: HADR_SYNC_COMMIT",
       "severity": "low",
@@ -714,6 +732,23 @@
         "tasks": 7600,
         "signal_ms": 400,
         "share_pct": 7.3
+      }
+    },
+    {
+      "check": "memory",
+      "title": "Page life expectancy is 180 seconds",
+      "severity": "low",
+      "score": 25,
+      "detail": "Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.",
+      "block": [],
+      "evidence": [
+        "Buffer Manager: Page life expectancy = 180"
+      ],
+      "advice": [
+        "Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory."
+      ],
+      "data": {
+        "page_life_expectancy": 180
       }
     },
     {

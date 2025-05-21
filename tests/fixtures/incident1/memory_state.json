@@ -1,0 +1,12 @@
+[
+  {
+    "total_physical_memory_kb": 67108864,
+    "available_physical_memory_kb": 1310720,
+    "system_memory_state_desc": "Available physical memory is high",
+    "system_low_memory_signal_state": 0,
+    "physical_memory_in_use_kb": 62914560,
+    "process_physical_memory_low": 0,
+    "process_virtual_memory_low": 0,
+    "memory_utilization_percentage": 100
+  }
+]
