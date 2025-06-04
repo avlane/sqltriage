@@ -43,6 +43,8 @@ def build_parser():
                         help="exit with status 1 if any finding is at least this severe")
     parser.add_argument("--blocking-min-wait", type=float, metavar="SECONDS",
                         help="ignore sessions blocked for less than this long (default 2)")
+    parser.add_argument("--weight", action="append", metavar="CHECK=FACTOR", default=[],
+                        help="scale a check's scores, such as agent=0.5 (repeatable)")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -56,6 +58,23 @@ def connection_string(args):
         encrypt=not args.no_encrypt,
         trust_server_certificate=args.trust_server_cert,
     )
+
+
+def parse_weights(pairs, from_config=None):
+    """Merge CHECK=FACTOR flags over the [weights] table; reject unknown checks and bad numbers."""
+    weights = dict(from_config or {})
+    for pair in pairs:
+        name, _, text = pair.partition("=")
+        try:
+            weights[name.strip()] = float(text)
+        except ValueError:
+            raise ValueError("bad --weight {!r}: expected CHECK=FACTOR".format(pair)) from None
+    for name, factor in weights.items():
+        if name not in CHECKS:
+            raise ValueError("unknown check in weights: {}".format(name))
+        if isinstance(factor, bool) or not isinstance(factor, (int, float)) or factor < 0:
+            raise ValueError("weight for {} must be a number of 0 or more".format(name))
+    return weights
 
 
 EXTENSION_FORMATS = {".md": "markdown", ".markdown": "markdown", ".json": "json", ".txt": "text"}
@@ -113,6 +132,13 @@ def main(argv=None, out=None):
         value = getattr(args, name)
         if value:
             options[name] = [d.strip() for d in value.split(",") if d.strip()]
+    try:
+        weights = parse_weights(args.weight, options.get("weights"))
+    except ValueError as exc:
+        sys.stderr.write("{}\n".format(exc))
+        return 2
+    if weights:
+        options["weights"] = weights
     if args.blocking_min_wait is not None:
         options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
     ctx = Context(source, interval=args.interval, top=args.top, samples=max(1, args.samples), options=options)

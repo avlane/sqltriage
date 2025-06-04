@@ -84,7 +84,7 @@ def load(path):
 
 
 def check_keys(data, path):
-    known = {"checks": {"only", "databases", "exclude_databases"}}
+    known = {"checks": {"only", "databases", "exclude_databases"}, "weights": None}
     for section, keys in list(ARGUMENT_KEYS.items()) + list(OPTION_KEYS.items()):
         known[section] = set(keys)
     for section, values in data.items():
@@ -92,6 +92,8 @@ def check_keys(data, path):
             raise ConfigError("{}: unknown section [{}]".format(path, section))
         if not isinstance(values, dict):
             raise ConfigError("{}: [{}] must be a table".format(path, section))
+        if known[section] is None:  # free-form: the keys are check names, validated by the caller
+            continue
         for key in values:
             if key not in known[section]:
                 raise ConfigError("{}: unknown key '{}' in [{}]".format(path, key, section))
@@ -116,4 +118,6 @@ def context_options(data):
         for key, name in keys.items():
             if key in data.get(section, {}):
                 options[name] = data[section][key]
+    if "weights" in data:
+        options["weights"] = dict(data["weights"])
     return options

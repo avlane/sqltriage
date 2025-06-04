@@ -139,6 +139,9 @@ file. See `sqltriage/config.py` for every key; for example:
     min_execs = 20
     ratio = 2.5
 
+    [weights]       # scale a check's scores; 0 silences it
+    agent = 0.5
+
 Python 3.11 or newer is needed (the config reader is `tomllib`).
 
 ## Trying it without a server

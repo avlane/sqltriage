@@ -1,7 +1,7 @@
 import unittest
 
 from sqltriage.models import Finding, severity_rank
-from sqltriage.scoring import clamp, rank, step_score
+from sqltriage.scoring import apply_weights, clamp, rank, step_score
 
 LEVELS = [(100, 80), (10, 40), (1, 10)]
 
@@ -16,6 +16,23 @@ class StepScoreTests(unittest.TestCase):
 
     def test_none(self):
         self.assertEqual(step_score(None, LEVELS), 0)
+
+
+class WeightTests(unittest.TestCase):
+    def test_scales_only_the_named_checks(self):
+        findings = [Finding("agent", "a", 80), Finding("vlf", "v", 80)]
+        apply_weights(findings, {"agent": 0.5})
+        self.assertEqual([f.score for f in findings], [40, 80])
+
+    def test_result_is_clamped(self):
+        findings = [Finding("agent", "a", 80)]
+        apply_weights(findings, {"agent": 2})
+        self.assertEqual(findings[0].score, 100)
+
+    def test_zero_silences(self):
+        findings = [Finding("agent", "a", 80)]
+        apply_weights(findings, {"agent": 0})
+        self.assertEqual(findings[0].severity, "info")
 
 
 class SeverityRankTests(unittest.TestCase):

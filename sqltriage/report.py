@@ -4,7 +4,7 @@ import datetime
 from . import correlate
 from .checks import CHECKS
 from .models import LEVELS
-from .scoring import rank
+from .scoring import apply_weights, rank
 
 
 class Report:
@@ -35,4 +35,4 @@ def build_report(ctx, server, names=None, now=None):
             findings.extend(CHECKS[name].run(ctx))
         except Exception as exc:  # one broken check must not sink the report
             errors.append("{}: {}".format(name, exc))
-    return Report(server, rank(correlate.apply(findings), CHECKS), errors, now or datetime.datetime.now(), ctx.instance_info())
+    return Report(server, rank(apply_weights(correlate.apply(findings), ctx.options.get("weights") or {}), CHECKS), errors, now or datetime.datetime.now(), ctx.instance_info())

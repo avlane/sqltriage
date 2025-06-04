@@ -5,7 +5,7 @@ import os
 import unittest
 
 from sqltriage import __version__
-from sqltriage.cli import build_parser, connection_string, main
+from sqltriage.cli import build_parser, connection_string, main, parse_weights
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -134,6 +134,27 @@ class CliTests(unittest.TestCase):
         _, text = self.run_cli("--only", "blocking", "--blocking-min-wait", "30")
         self.assertIn("spid 57 is blocking 3 session(s)", text)
         self.assertNotIn("spid 93", text)
+
+    def test_weights_change_the_ranking(self):
+        _, plain = self.run_cli("-f", "json", "--only", "agent")
+        _, quiet = self.run_cli("-f", "json", "--only", "agent", "--weight", "agent=0.5")
+        before = [f["score"] for f in json.loads(plain)["findings"]]
+        after = [f["score"] for f in json.loads(quiet)["findings"]]
+        self.assertEqual(after, [round(s * 0.5) for s in before])
+
+    def test_parse_weights(self):
+        self.assertEqual(parse_weights(["agent=0.5", "vlf=2"], {"cpu": 1.0}), {"cpu": 1.0, "agent": 0.5, "vlf": 2.0})
+        for bad in (["agent"], ["agent=x"], ["nonsense=1"], ["agent=-1"]):
+            with self.assertRaises(ValueError):
+                parse_weights(bad)
+        with self.assertRaises(ValueError):
+            parse_weights([], {"agent": True})
+
+    def test_bad_weight_is_a_usage_error(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, _ = self.run_cli("--weight", "nonsense=1")
+        self.assertEqual(code, 2)
+        self.assertIn("unknown check in weights: nonsense", err.getvalue())
 
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")

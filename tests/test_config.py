@@ -48,6 +48,10 @@ class ConfigFileTests(unittest.TestCase):
             {"server": "SQLPROD01", "trust_server_cert": True, "interval": 15, "top": 8, "only": "waits,blocking"},
         )
 
+    def test_weights_table(self):
+        data = config.load(self.write("[weights]\nagent = 0.5\nvlf = 1.5\n"))
+        self.assertEqual(config.context_options(data), {"weights": {"agent": 0.5, "vlf": 1.5}})
+
     def test_ignore_list(self):
         data = config.load(self.write('[agent]\nignore = ["Purge*"]\n'))
         self.assertEqual(config.context_options(data), {"ignore_jobs": ["Purge*"]})
