@@ -3,7 +3,15 @@ import os
 import tempfile
 import unittest
 
-from sqltriage.source import FixtureSource, PyodbcSource, RecordingSource, SourceError, quote_name
+from sqltriage.source import (
+    DbApiSource,
+    FixtureSource,
+    MssqlPythonSource,
+    PyodbcSource,
+    RecordingSource,
+    SourceError,
+    quote_name,
+)
 from tests.fakes import FakeConnection
 
 
@@ -46,6 +54,37 @@ class PyodbcSourceTests(unittest.TestCase):
         with self.assertRaises(SourceError) as cm:
             source.fetch("waits", "SELECT 1")
         self.assertIn("waits", str(cm.exception))
+
+    def test_driver_without_a_settable_timeout(self):
+        class NoTimeout(FakeConnection):
+            ready = False
+
+            def __setattr__(self, name, value):
+                if name == "timeout" and self.ready:
+                    raise AttributeError("read only")
+                super().__setattr__(name, value)
+
+        conn = NoTimeout([(["a"], [(1,)])])
+        conn.ready = True
+        source = PyodbcSource("DSN=x", connect=lambda cs, **kw: conn)
+        self.assertEqual(source.fetch("rows", "SELECT 1"), [{"a": 1}])
+
+    def test_each_driver_imports_its_own_module(self):
+        import sys
+        import types
+
+        calls = []
+        for module, source_class in (("pyodbc", PyodbcSource), ("mssql_python", MssqlPythonSource)):
+            fake = types.ModuleType(module)
+            fake.connect = lambda cs, _m=module, **kw: calls.append(_m) or FakeConnection([(["a"], [(1,)])])
+            self.addCleanup(sys.modules.pop, module, None)
+            sys.modules[module] = fake
+            source_class("x").fetch("rows", "SELECT 1")
+        self.assertEqual(calls, ["pyodbc", "mssql_python"])
+
+    def test_base_class_needs_a_driver(self):
+        with self.assertRaises(NotImplementedError):
+            DbApiSource("x").fetch("rows", "SELECT 1")
 
     def test_quote_name_escapes_brackets(self):
         self.assertEqual(quote_name("odd]name"), "[odd]]name]")

@@ -28,11 +28,12 @@ class Source:
         pass
 
 
-class PyodbcSource(Source):
-    """Runs queries on a live connection.
+class DbApiSource(Source):
+    """Runs queries on a live connection from any DB-API style SQL Server driver.
 
-    ``connect`` is injectable so tests can hand in a fake; by default pyodbc is
-    imported on first use so the rest of the tool works without it installed.
+    ``connect`` is injectable so tests can hand in a fake.  Without one, the
+    subclass imports its driver on first use, so the rest of the tool works
+    without any driver installed.
     """
 
     def __init__(self, connection_string, connect=None, query_timeout=60):
@@ -45,14 +46,16 @@ class PyodbcSource(Source):
 
     def _connection(self):
         if self._conn is None:
-            connect = self._connect
-            if connect is None:
-                import pyodbc
-
-                connect = pyodbc.connect
+            connect = self._connect or self._import_connect()
             self._conn = connect(self._connection_string, autocommit=True, timeout=15)
-            self._conn.timeout = self._query_timeout
+            try:
+                self._conn.timeout = self._query_timeout
+            except AttributeError:  # a driver without a settable query timeout
+                pass
         return self._conn
+
+    def _import_connect(self):
+        raise NotImplementedError
 
     def _use(self, cursor, database):
         if self._home is None:
@@ -73,7 +76,7 @@ class PyodbcSource(Source):
                 cursor.execute(sql, *params)
                 columns = [col[0] for col in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
-            except Exception as exc:  # pyodbc.Error and friends
+            except Exception as exc:  # the driver's own Error classes, and friends
                 raise SourceError("{}: {}".format(name, exc)) from exc
         finally:
             cursor.close()
@@ -82,6 +85,22 @@ class PyodbcSource(Source):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+
+
+class PyodbcSource(DbApiSource):
+    def _import_connect(self):
+        import pyodbc
+
+        return pyodbc.connect
+
+
+class MssqlPythonSource(DbApiSource):
+    """Microsoft's own Python driver, which needs no ODBC driver installed."""
+
+    def _import_connect(self):
+        import mssql_python
+
+        return mssql_python.connect
 
 
 class FixtureSource(Source):

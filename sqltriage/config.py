@@ -36,6 +36,7 @@ ARGUMENT_KEYS = {
         "database": "database",
         "user": "user",
         "driver": "driver",
+        "library": "library",
         "trust_server_cert": "trust_server_cert",
         "no_encrypt": "no_encrypt",
     },

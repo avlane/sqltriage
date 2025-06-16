@@ -6,12 +6,12 @@ import sys
 from . import __version__
 from . import config
 from .checks import CHECKS
-from .connect import build_connection_string
+from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
 from .render import FORMATS
 from .models import LEVELS, severity_rank
 from .report import build_report, filter_report
-from .source import FixtureSource, PyodbcSource, RecordingSource
+from .source import FixtureSource, MssqlPythonSource, PyodbcSource, RecordingSource
 
 
 def build_parser():
@@ -24,6 +24,8 @@ def build_parser():
     parser.add_argument("-S", "--server", default="localhost", help="instance to connect to")
     parser.add_argument("-d", "--database", default="master", help="initial database")
     parser.add_argument("-U", "--user", help="SQL login (default is a trusted connection)")
+    parser.add_argument("--library", choices=("auto",) + LIBRARIES, default="auto",
+                        help="Python driver: pyodbc, or Microsoft's mssql-python (default: pyodbc, else mssql-python if only it is installed)")
     parser.add_argument("--driver", help="ODBC driver name (default: newest installed of 18 and 17)")
     parser.add_argument("--no-encrypt", action="store_true", help="connect without encryption")
     parser.add_argument("--trust-server-cert", action="store_true", help="accept a self-signed server certificate")
@@ -49,7 +51,7 @@ def build_parser():
     return parser
 
 
-def connection_string(args):
+def connection_string(args, library="pyodbc"):
     return build_connection_string(
         args.server,
         args.database,
@@ -57,6 +59,7 @@ def connection_string(args):
         driver=args.driver,
         encrypt=not args.no_encrypt,
         trust_server_certificate=args.trust_server_cert,
+        library=library,
     )
 
 
@@ -124,7 +127,9 @@ def main(argv=None, out=None):
     if args.fixtures:
         source = FixtureSource(args.fixtures)
     else:
-        source = PyodbcSource(connection_string(args))
+        library = choose_library(args.library)
+        source_class = MssqlPythonSource if library == "mssql-python" else PyodbcSource
+        source = source_class(connection_string(args, library))
         if args.record:
             source = RecordingSource(source, args.record)
     options = dict(options)

@@ -12,6 +12,7 @@ authors = [{ name = "Avery Lane" }]
 
 [project.optional-dependencies]
 odbc = ["pyodbc>=4.0.30"]
+mssql = ["mssql-python"]
 
 [project.scripts]
 sqltriage = "sqltriage.cli:main"
