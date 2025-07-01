@@ -4,7 +4,7 @@ import os
 import sys
 
 from . import __version__
-from . import config
+from . import config, preflight
 from .checks import CHECKS
 from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
@@ -47,6 +47,7 @@ def build_parser():
                         help="ignore sessions blocked for less than this long (default 2)")
     parser.add_argument("--weight", action="append", metavar="CHECK=FACTOR", default=[],
                         help="scale a check's scores, such as agent=0.5 (repeatable)")
+    parser.add_argument("--check", action="store_true", help="test the connection and permissions, then exit")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -146,6 +147,13 @@ def main(argv=None, out=None):
         options["weights"] = weights
     if args.blocking_min_wait is not None:
         options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
+    if args.check:
+        try:
+            ok, lines = preflight.run(source)
+        finally:
+            source.close()
+        out.write("\n".join(lines) + "\n")
+        return 0 if ok else 1
     ctx = Context(source, interval=args.interval, top=args.top, samples=max(1, args.samples), options=options)
     if args.fixtures:
         clock = ManualClock()  # recorded samples are already apart in time

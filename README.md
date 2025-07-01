@@ -32,6 +32,12 @@ and the only waiting it does is the sample interval for the wait stats delta.
 Windows authentication is the default. For a SQL login pass `-U name` and put
 the password in the `SQLTRIAGE_PASSWORD` environment variable.
 
+`--check` tests the connection and the permissions the checks need, and exits.
+
+By default the tool uses pyodbc. Microsoft's `mssql-python` driver, which needs no
+ODBC driver installed, works too: `pip install mssql-python` and pass
+`--library mssql-python` (or just do not install pyodbc and it is picked up).
+
 ODBC Driver 18 encrypts by default. If the instance has a self-signed
 certificate use `--trust-server-cert`; `--no-encrypt` turns encryption off.
 

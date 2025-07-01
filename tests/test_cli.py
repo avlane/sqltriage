@@ -156,6 +156,12 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("unknown check in weights: nonsense", err.getvalue())
 
+    def test_check_reports_permissions(self):
+        code, text = self.run_cli("--check")
+        self.assertEqual(code, 0)
+        self.assertIn("connected to SQLPROD01", text)
+        self.assertIn("ok: can read the server DMVs", text)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))
