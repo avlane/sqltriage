@@ -1,0 +1,8 @@
+[
+  {
+    "servicename": "SQL Server Agent (MSSQLSERVER)",
+    "status_desc": "Running",
+    "startup_type_desc": "Automatic",
+    "last_startup_time": "2023-03-02T03:14:10"
+  }
+]

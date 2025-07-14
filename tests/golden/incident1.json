@@ -510,6 +510,28 @@
       }
     },
     {
+      "check": "agent",
+      "title": "2 enabled job(s) have missed their schedule",
+      "severity": "medium",
+      "score": 46,
+      "detail": "Their next run time is more than 45 minutes in the past.",
+      "block": [],
+      "evidence": [
+        "Stats Refresh - Hourly was due 2023-03-14T07:00:00 (178 min ago)",
+        "Purge Old Audit Rows was due 2023-03-14T08:30:00 (88 min ago)"
+      ],
+      "advice": [
+        "Check that the Agent was running at those times and that the jobs are not stuck from an earlier run."
+      ],
+      "data": {
+        "overdue": 2,
+        "jobs": [
+          "Stats Refresh - Hourly",
+          "Purge Old Audit Rows"
+        ]
+      }
+    },
+    {
       "check": "querystore",
       "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
       "severity": "medium",

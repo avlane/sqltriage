@@ -26,18 +26,19 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 18 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
 | 19 | medium | 56 | Wait: LCK_M_X |
 | 20 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
-| 21 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
-| 22 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
-| 23 | medium | 40 | Query Store in ReportsDB is not healthy |
-| 24 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 25 | low | 35 | Wait: PAGELATCH_UP |
-| 26 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
-| 27 | low | 33 | Wait: WRITELOG |
-| 28 | low | 31 | Wait: LCK_M_S |
-| 29 | low | 30 | max server memory is not set on a 64 GB host |
-| 30 | low | 28 | Wait: HADR_SYNC_COMMIT |
-| 31 | low | 25 | Page life expectancy is 180 seconds |
-| 32 | low | 20 | Log: Staging has 640 VLFs |
+| 21 | medium | 46 | 2 enabled job(s) have missed their schedule |
+| 22 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
+| 23 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
+| 24 | medium | 40 | Query Store in ReportsDB is not healthy |
+| 25 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 26 | low | 35 | Wait: PAGELATCH_UP |
+| 27 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
+| 28 | low | 33 | Wait: WRITELOG |
+| 29 | low | 31 | Wait: LCK_M_S |
+| 30 | low | 30 | max server memory is not set on a 64 GB host |
+| 31 | low | 28 | Wait: HADR_SYNC_COMMIT |
+| 32 | low | 25 | Page life expectancy is 180 seconds |
+| 33 | low | 20 | Log: Staging has 640 VLFs |
 
 **1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
@@ -285,7 +286,17 @@ spid 93 [sleeping] CORP\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker
 Next steps:
 1. Find out why spid 93 is not finishing; KILL is the last resort.
 
-**21. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
+**21. 2 enabled job(s) have missed their schedule** (medium, 46)
+
+Their next run time is more than 45 minutes in the past.
+
+- Stats Refresh - Hourly was due 2023-03-14T07:00:00 (178 min ago)
+- Purge Old Audit Rows was due 2023-03-14T08:30:00 (88 min ago)
+
+Next steps:
+1. Check that the Agent was running at those times and that the jobs are not stuck from an earlier run.
+
+**22. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -295,7 +306,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Look in the error log and extended events for the failure; unforce if it persists.
 
-**22. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
+**23. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
 
 - average duration 24 ms now against 10 ms before (2.4x slower)
 - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
@@ -305,7 +316,7 @@ Next steps:
 Next steps:
 1. In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**23. Query Store in ReportsDB is not healthy** (medium, 40)
+**24. Query Store in ReportsDB is not healthy** (medium, 40)
 
 While Query Store is not collecting, the regression figures for this database go stale.
 
@@ -314,7 +325,7 @@ While Query Store is not collecting, the regression figures for this database go
 Next steps:
 1. Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
 
-**24. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**25. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -322,7 +333,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**25. Wait: PAGELATCH_UP** (low, 35)
+**26. Wait: PAGELATCH_UP** (low, 35)
 
 Contention on a data page that is already in memory.
 
@@ -335,7 +346,7 @@ Next steps:
 1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
 1. In a user database look for last-page insert hot spots.
 
-**26. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
+**27. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
 - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
 - ran for 4540s before failing
@@ -345,7 +356,7 @@ Next steps:
 Next steps:
 1. The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
 
-**27. Wait: WRITELOG** (low, 33)
+**28. Wait: WRITELOG** (low, 33)
 
 Sessions are waiting for commit log blocks to be hardened to disk.
 
@@ -357,7 +368,7 @@ Next steps:
 1. Check write latency on the log file (sys.dm_io_virtual_file_stats).
 1. Look for many tiny autocommit transactions that could be batched.
 
-**28. Wait: LCK_M_S** (low, 31)
+**29. Wait: LCK_M_S** (low, 31)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -370,7 +381,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**29. max server memory is not set on a 64 GB host** (low, 30)
+**30. max server memory is not set on a 64 GB host** (low, 30)
 
 SQL Server will grow until the OS has to push back, which is a bad time to find out.
 
@@ -379,7 +390,7 @@ SQL Server will grow until the OS has to push back, which is a bad time to find 
 Next steps:
 1. Set it to leave several GB (more on big hosts) for the OS and anything else running there.
 
-**30. Wait: HADR_SYNC_COMMIT** (low, 28)
+**31. Wait: HADR_SYNC_COMMIT** (low, 28)
 
 Commits on the primary wait for a synchronous secondary to harden the log.
 
@@ -392,7 +403,7 @@ Next steps:
 1. Check log send queue, network latency and secondary log write latency.
 1. See the availability group section of this report.
 
-**31. Page life expectancy is 180 seconds** (low, 25)
+**32. Page life expectancy is 180 seconds** (low, 25)
 
 Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
 
@@ -401,7 +412,7 @@ Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop ma
 Next steps:
 1. Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
 
-**32. Log: Staging has 640 VLFs** (low, 20)
+**33. Log: Staging has 640 VLFs** (low, 20)
 
 - 640 VLFs in 6,144 MB of log (12 active)
 

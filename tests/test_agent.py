@@ -89,6 +89,66 @@ class FailedJobTests(unittest.TestCase):
         self.assertLessEqual(agent.failure_score("Log Backup", 50), 90)
 
 
+class ServiceTests(unittest.TestCase):
+    def test_incident_has_overdue_jobs_but_a_running_agent(self):
+        (finding,) = agent.service_findings(Context(FixtureSource(FIXTURES)))
+        self.assertEqual(finding.title, "2 enabled job(s) have missed their schedule")
+        self.assertEqual(finding.score, 46)
+        self.assertEqual(finding.evidence[0], "Stats Refresh - Hourly was due 2023-03-14T07:00:00 (178 min ago)")
+
+    def serve(self, service_rows, overdue_rows):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return {"agent_service": service_rows, "agent_overdue_jobs": overdue_rows}.get(name, [])
+
+        return Context(Fake(FIXTURES))
+
+    def test_agent_stopped(self):
+        stopped = [{"servicename": "SQL Server Agent (MSSQLSERVER)", "status_desc": "Stopped",
+                    "startup_type_desc": "Automatic", "last_startup_time": "2025-07-01T03:00:00"}]
+        overdue = [{"job_name": "J1", "next_run": "x", "minutes_late": 90}]
+        down, missed = agent.service_findings(self.serve(stopped, overdue))
+        self.assertEqual((down.title, down.score), ("SQL Server Agent (MSSQLSERVER) is stopped", 90))
+        self.assertIn("expected while the Agent service is not running", missed.evidence)
+        self.assertEqual(missed.score, 43)
+
+    def test_healthy(self):
+        running = [{"servicename": "SQL Server Agent", "status_desc": "Running", "startup_type_desc": "Automatic", "last_startup_time": "x"}]
+        self.assertEqual(agent.service_findings(self.serve(running, [])), [])
+
+    def test_ignored_jobs_do_not_count_as_missed(self):
+        ctx = self.serve([], [{"job_name": "Purge Old Rows", "next_run": "x", "minutes_late": 90}])
+        ctx.options["ignore_jobs"] = ["Purge*"]
+        self.assertEqual(agent.service_findings(ctx), [])
+
+    def test_grace_period_is_in_the_query(self):
+        seen = []
+
+        class Spy(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                seen.append((name, sql))
+                return []
+
+        agent.service_findings(Context(Spy(FIXTURES), options={"agent_overdue_grace": 90}))
+        sql = dict(seen)["agent_overdue_jobs"]
+        self.assertIn("DATEADD(MINUTE, -90, GETDATE())", sql)
+
+    def test_unreadable_service_view_is_skipped(self):
+        class NoService(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "agent_service":
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        self.assertEqual(len(agent.service_findings(Context(NoService(FIXTURES)))), 1)
+
+    def test_many_overdue_jobs_are_capped(self):
+        rows = [{"job_name": "J%d" % i, "next_run": "x", "minutes_late": 60} for i in range(20)]
+        (finding,) = agent.service_findings(self.serve([], rows))
+        self.assertEqual(finding.score, 70)
+        self.assertEqual(len(finding.evidence), 5)
+
+
 class LongRunningTests(unittest.TestCase):
     def test_normal_job_is_not_flagged(self):
         findings = agent.long_running_findings(Context(FixtureSource(FIXTURES)))

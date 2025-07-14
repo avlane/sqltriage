@@ -52,6 +52,41 @@ STEP_HINTS = {
     2627: "A key violation: the data the step loads has changed.",
 }
 
+# The Agent service itself (SQL Server 2008 R2 SP1 and later).
+SERVICE_SQL = """\
+SELECT servicename,
+       status_desc,
+       startup_type_desc,
+       last_startup_time
+FROM sys.dm_server_services
+WHERE servicename LIKE 'SQL Server Agent%';"""
+
+# Enabled jobs on enabled schedules whose next run time has already passed.
+# The CASE keeps agent_datetime away from the 0 that means "no next run".
+OVERDUE_SQL = """\
+WITH due AS (
+    SELECT j.name AS job_name,
+           CASE WHEN js.next_run_date > 0
+                THEN msdb.dbo.agent_datetime(js.next_run_date, js.next_run_time)
+           END AS next_run
+    FROM msdb.dbo.sysjobschedules AS js
+    JOIN msdb.dbo.sysjobs AS j
+      ON j.job_id = js.job_id
+    JOIN msdb.dbo.sysschedules AS s
+      ON s.schedule_id = js.schedule_id
+    WHERE j.enabled = 1
+      AND s.enabled = 1
+)
+SELECT job_name,
+       next_run,
+       DATEDIFF(MINUTE, next_run, GETDATE()) AS minutes_late
+FROM due
+WHERE next_run < DATEADD(MINUTE, -{grace}, GETDATE())
+ORDER BY next_run;"""
+
+# Agent only refreshes next_run_date every 20 minutes or so, so allow for that.
+OVERDUE_GRACE_MINUTES = 45
+
 # Jobs that have started and not stopped in the current Agent session.  The
 # newest row in syssessions is the session since the last Agent restart.
 RUNNING_SQL = """\
@@ -211,5 +246,47 @@ def failed_job_findings(ctx):
     return findings
 
 
+def service_findings(ctx):
+    """Agent stopped, or enabled jobs that should have started and did not."""
+    findings = []
+    try:
+        services = ctx.source.fetch("agent_service", SERVICE_SQL)
+    except SourceError:
+        services = []
+    stopped = [s for s in services if s["status_desc"] != "Running"]
+    for service in stopped:
+        findings.append(
+            Finding(
+                check=NAME,
+                title="{} is {}".format(service["servicename"], service["status_desc"].lower()),
+                score=90,
+                detail="No scheduled job will run while Agent is down.",
+                evidence=["startup type {}, last started {}".format(service["startup_type_desc"], service["last_startup_time"])],
+                advice=["Start the service and read the Agent log for why it stopped."],
+                data={"service": service["servicename"], "status": service["status_desc"]},
+            )
+        )
+    grace = int(ctx.options.get("agent_overdue_grace", OVERDUE_GRACE_MINUTES))
+    overdue = [r for r in ctx.source.fetch("agent_overdue_jobs", OVERDUE_SQL.format(grace=grace)) if not ctx.job_ignored(r["job_name"])]
+    if overdue:
+        score = 40 + min(30, 3 * len(overdue))
+        evidence = ["{} was due {} ({} min ago)".format(r["job_name"], r["next_run"], r["minutes_late"]) for r in overdue[:5]]
+        if stopped:
+            evidence.append("expected while the Agent service is not running")
+            score = min(score, 60)
+        findings.append(
+            Finding(
+                check=NAME,
+                title="{} enabled job(s) have missed their schedule".format(len(overdue)),
+                score=score,
+                detail="Their next run time is more than {} minutes in the past.".format(grace),
+                evidence=evidence,
+                advice=["Check that the Agent was running at those times and that the jobs are not stuck from an earlier run."],
+                data={"overdue": len(overdue), "jobs": [r["job_name"] for r in overdue]},
+            )
+        )
+    return findings
+
+
 def run(ctx):
-    return failed_job_findings(ctx) + long_running_findings(ctx)
+    return service_findings(ctx) + failed_job_findings(ctx) + long_running_findings(ctx)
