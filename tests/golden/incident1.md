@@ -10,35 +10,37 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 2 | critical | 90 | Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION |
 | 3 | high | 81 | tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages |
 | 4 | high | 80 | Availability group PayrollAG: failover to SQLPROD02 is not ready |
-| 5 | high | 75 | Availability group PayrollAG: PayrollDB on SQLDR02 is behind |
-| 6 | high | 75 | Availability group PayrollAG: ReportsDB on SQLPROD02 is behind |
-| 7 | high | 75 | CPU scheduler pressure: runnable queue averages 3.6 per scheduler |
-| 8 | high | 71 | Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h) |
-| 9 | high | 70 | tempdb is 90% full |
-| 10 | high | 70 | Availability group PayrollAG: replica SQLDR02 is unhealthy |
-| 11 | high | 68 | Agent job running long: IndexOptimize - USER_DATABASES (9h00m) |
-| 12 | high | 68 | 3 queries waiting for a memory grant |
-| 13 | high | 66 | Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd) |
-| 14 | high | 66 | spid 112 holds a 12.0 GB memory grant and uses 1.0 GB |
-| 15 | high | 65 | tempdb file layout: 4 data file(s), sizes not even |
-| 16 | medium | 60 | Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP |
-| 17 | medium | 60 | Availability group PayrollAG: failover to SQLDR02 is not ready |
-| 18 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
-| 19 | medium | 56 | Wait: LCK_M_X |
-| 20 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
-| 21 | medium | 46 | 2 enabled job(s) have missed their schedule |
-| 22 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
-| 23 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
-| 24 | medium | 40 | Query Store in ReportsDB is not healthy |
-| 25 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 26 | low | 35 | Wait: PAGELATCH_UP |
-| 27 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
-| 28 | low | 33 | Wait: WRITELOG |
-| 29 | low | 31 | Wait: LCK_M_S |
-| 30 | low | 30 | max server memory is not set on a 64 GB host |
-| 31 | low | 28 | Wait: HADR_SYNC_COMMIT |
-| 32 | low | 25 | Page life expectancy is 180 seconds |
-| 33 | low | 20 | Log: Staging has 640 VLFs |
+| 5 | high | 76 | Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h) |
+| 6 | high | 75 | Log backups: ReportsDB last one was 12h00m ago |
+| 7 | high | 75 | Availability group PayrollAG: PayrollDB on SQLDR02 is behind |
+| 8 | high | 75 | Availability group PayrollAG: ReportsDB on SQLPROD02 is behind |
+| 9 | high | 75 | CPU scheduler pressure: runnable queue averages 3.6 per scheduler |
+| 10 | high | 70 | tempdb is 90% full |
+| 11 | high | 70 | Availability group PayrollAG: replica SQLDR02 is unhealthy |
+| 12 | high | 68 | Agent job running long: IndexOptimize - USER_DATABASES (9h00m) |
+| 13 | high | 68 | 3 queries waiting for a memory grant |
+| 14 | high | 66 | Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd) |
+| 15 | high | 66 | spid 112 holds a 12.0 GB memory grant and uses 1.0 GB |
+| 16 | high | 65 | tempdb file layout: 4 data file(s), sizes not even |
+| 17 | medium | 60 | Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP |
+| 18 | medium | 60 | Availability group PayrollAG: failover to SQLDR02 is not ready |
+| 19 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
+| 20 | medium | 56 | Wait: LCK_M_X |
+| 21 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
+| 22 | medium | 46 | 2 enabled job(s) have missed their schedule |
+| 23 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
+| 24 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
+| 25 | medium | 40 | Query Store in ReportsDB is not healthy |
+| 26 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
+| 27 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 28 | low | 35 | Wait: PAGELATCH_UP |
+| 29 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
+| 30 | low | 33 | Wait: WRITELOG |
+| 31 | low | 31 | Wait: LCK_M_S |
+| 32 | low | 30 | max server memory is not set on a 64 GB host |
+| 33 | low | 28 | Wait: HADR_SYNC_COMMIT |
+| 34 | low | 25 | Page life expectancy is 180 seconds |
+| 35 | low | 20 | Log: Staging has 640 VLFs |
 
 **1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
@@ -105,7 +107,29 @@ Next steps:
 Next steps:
 1. Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica.
 
-**5. Availability group PayrollAG: PayrollDB on SQLDR02 is behind** (high, 75)
+**5. Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)** (high, 76)
+
+- 3 failure(s) in the last 24 hours, most recent at 2023-03-14T09:45:00
+- ran for 14s before failing
+- failing step 1 (DatabaseBackup - USER_DATABASES - LOG): error 3041, severity 16
+- Executed as user: NT SERVICE\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041). The step failed.
+- also shows up as: Log backups: PayrollDB last one was 1h10m ago, Log backups: ReportsDB last one was 12h00m ago
+
+Next steps:
+1. A backup failed; the real reason is in the SQL Server error log just before this time.
+
+**6. Log backups: ReportsDB last one was 12h00m ago** (high, 75)
+
+- last log backup 12h00m ago
+- 21,500 MB of log since then, 87% of the 24,576 MB log
+- the log is nearly all un-backed-up and will have to grow or fill
+- also shows up as: Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP
+- the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)
+
+Next steps:
+1. Check the log backup job (see the Agent section) and the backup target.
+
+**7. Availability group PayrollAG: PayrollDB on SQLDR02 is behind** (high, 75)
 
 - log send queue 4.0 GB, no movement, so no estimate
 - redo queue 117 MB, about 50 min at the current rate
@@ -119,7 +143,7 @@ Next steps:
 1. Send queue growing: look at the network and the primary's log write rate.
 1. Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
 
-**6. Availability group PayrollAG: ReportsDB on SQLPROD02 is behind** (high, 75)
+**8. Availability group PayrollAG: ReportsDB on SQLPROD02 is behind** (high, 75)
 
 - data movement is suspended (SUSPEND_FROM_USER)
 - a failover to this replica now would lose about 38m
@@ -129,7 +153,7 @@ Next steps:
 1. Send queue growing: look at the network and the primary's log write rate.
 1. Redo queue growing: look at I/O and CPU on the secondary, and long running queries on a readable secondary.
 
-**7. CPU scheduler pressure: runnable queue averages 3.6 per scheduler** (high, 75)
+**9. CPU scheduler pressure: runnable queue averages 3.6 per scheduler** (high, 75)
 
 Tasks are waiting for CPU time.
 
@@ -145,17 +169,7 @@ Next steps:
 1. Find the top CPU consumers (sys.dm_exec_query_stats or Query Store).
 1. Check that the host is not CPU-starved by something outside SQL Server.
 
-**8. Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)** (high, 71)
-
-- 3 failure(s) in the last 24 hours, most recent at 2023-03-14T09:45:00
-- ran for 14s before failing
-- failing step 1 (DatabaseBackup - USER_DATABASES - LOG): error 3041, severity 16
-- Executed as user: NT SERVICE\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041). The step failed.
-
-Next steps:
-1. A backup failed; the real reason is in the SQL Server error log just before this time.
-
-**9. tempdb is 90% full** (high, 70)
+**10. tempdb is 90% full** (high, 70)
 
 - 9.8% free: 1100 MB of 11264 MB
 - used by version store 7764 MB, internal objects (sorts, hashes, spools) 1800 MB, user objects (temp tables) 600 MB
@@ -165,7 +179,7 @@ Next steps:
 Next steps:
 1. The oldest active snapshot transaction stops the version store being cleaned: see the blocking section.
 
-**10. Availability group PayrollAG: replica SQLDR02 is unhealthy** (high, 70)
+**11. Availability group PayrollAG: replica SQLDR02 is unhealthy** (high, 70)
 
 - SECONDARY, ASYNCHRONOUS_COMMIT (manual failover)
 - replica is DISCONNECTED
@@ -176,7 +190,7 @@ Next steps:
 1. Check the network path and the endpoint (port 5022 by default) between the replicas.
 1. Look at the replica's error log around the time it disconnected.
 
-**11. Agent job running long: IndexOptimize - USER_DATABASES (9h00m)** (high, 68)
+**12. Agent job running long: IndexOptimize - USER_DATABASES (9h00m)** (high, 68)
 
 - running for 9h00m against a usual 2h00m (4.5x)
 - started 2023-03-14T00:30:00, now on step 1
@@ -184,7 +198,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**12. 3 queries waiting for a memory grant** (high, 68)
+**13. 3 queries waiting for a memory grant** (high, 68)
 
 Queries cannot start until memory is granted; this shows as RESOURCE_SEMAPHORE waits.
 
@@ -198,7 +212,7 @@ Next steps:
 1. Look at what holds the granted memory (below, if it is over-granted) and at big sorts and hashes with bad estimates.
 1. Update statistics or add the missing index so the optimizer asks for less.
 
-**13. Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)** (high, 66)
+**14. Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)** (high, 66)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -208,7 +222,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one.
 
-**14. spid 112 holds a 12.0 GB memory grant and uses 1.0 GB** (high, 66)
+**15. spid 112 holds a 12.0 GB memory grant and uses 1.0 GB** (high, 66)
 
 An over-sized grant starves other queries of workspace memory.
 
@@ -217,7 +231,7 @@ An over-sized grant starves other queries of workspace memory.
 Next steps:
 1. An estimate far above reality caused this: check statistics and parameter sniffing for this query.
 
-**15. tempdb file layout: 4 data file(s), sizes not even** (high, 65)
+**16. tempdb file layout: 4 data file(s), sizes not even** (high, 65)
 
 - 4 data file(s): 8192 MB, 1024 MB, 1024 MB, 1024 MB
 - 16 logical CPUs, so 8 files is the usual starting point
@@ -227,25 +241,26 @@ Next steps:
 1. Add data files until there are 8, all the same size.
 1. Resize the files to the same size and growth increment so allocations spread evenly.
 
-**16. Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP** (medium, 60)
+**17. Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP** (medium, 60)
 
 - 2,300 VLFs in 24,576 MB of log (2100 active)
 - log autogrowth is 64 MB, which is how it got this many
 - log_reuse_wait_desc = LOG_BACKUP: The log cannot be truncated until the next log backup.
+- waiting on the log backup described in: Log backups: ReportsDB last one was 12h00m ago
 
 Next steps:
 1. Shrink the log once and regrow it in a few large steps to rebuild the VLFs.
 1. Set a fixed growth increment of 1024 to 8192 MB instead.
 1. Check that log backups are running and succeeding (see the Agent jobs section).
 
-**17. Availability group PayrollAG: failover to SQLDR02 is not ready** (medium, 60)
+**18. Availability group PayrollAG: failover to SQLDR02 is not ready** (medium, 60)
 
 - not joined to the group: ReportsDB
 
 Next steps:
 1. Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica.
 
-**18. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
+**19. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
 
 - average duration 1950 ms now against 510 ms before (3.8x slower)
 - 420 execution(s) recently, 9000 in the baseline window; about 605s lost
@@ -257,7 +272,7 @@ Next steps:
 1. Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.
 1. In Query Store, compare the plans for query 4412 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**19. Wait: LCK_M_X** (medium, 56)
+**20. Wait: LCK_M_X** (medium, 56)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -270,7 +285,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**20. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
+**21. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
 
 Longest wait 6s.
 
@@ -286,7 +301,7 @@ spid 93 [sleeping] CORP\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker
 Next steps:
 1. Find out why spid 93 is not finishing; KILL is the last resort.
 
-**21. 2 enabled job(s) have missed their schedule** (medium, 46)
+**22. 2 enabled job(s) have missed their schedule** (medium, 46)
 
 Their next run time is more than 45 minutes in the past.
 
@@ -296,7 +311,7 @@ Their next run time is more than 45 minutes in the past.
 Next steps:
 1. Check that the Agent was running at those times and that the jobs are not stuck from an earlier run.
 
-**22. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
+**23. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -306,7 +321,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Look in the error log and extended events for the failure; unforce if it persists.
 
-**23. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
+**24. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
 
 - average duration 24 ms now against 10 ms before (2.4x slower)
 - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
@@ -316,7 +331,7 @@ Next steps:
 Next steps:
 1. In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**24. Query Store in ReportsDB is not healthy** (medium, 40)
+**25. Query Store in ReportsDB is not healthy** (medium, 40)
 
 While Query Store is not collecting, the regression figures for this database go stale.
 
@@ -325,7 +340,16 @@ While Query Store is not collecting, the regression figures for this database go
 Next steps:
 1. Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
 
-**25. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**26. Log backups: PayrollDB last one was 1h10m ago** (medium, 40)
+
+- last log backup 1h10m ago
+- 41,200 MB of log since then, 67% of the 61,440 MB log
+- the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)
+
+Next steps:
+1. Check the log backup job (see the Agent section) and the backup target.
+
+**27. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -333,7 +357,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**26. Wait: PAGELATCH_UP** (low, 35)
+**28. Wait: PAGELATCH_UP** (low, 35)
 
 Contention on a data page that is already in memory.
 
@@ -346,7 +370,7 @@ Next steps:
 1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
 1. In a user database look for last-page insert hot spots.
 
-**27. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
+**29. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
 - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
 - ran for 4540s before failing
@@ -356,7 +380,7 @@ Next steps:
 Next steps:
 1. The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
 
-**28. Wait: WRITELOG** (low, 33)
+**30. Wait: WRITELOG** (low, 33)
 
 Sessions are waiting for commit log blocks to be hardened to disk.
 
@@ -368,7 +392,7 @@ Next steps:
 1. Check write latency on the log file (sys.dm_io_virtual_file_stats).
 1. Look for many tiny autocommit transactions that could be batched.
 
-**29. Wait: LCK_M_S** (low, 31)
+**31. Wait: LCK_M_S** (low, 31)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -381,7 +405,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**30. max server memory is not set on a 64 GB host** (low, 30)
+**32. max server memory is not set on a 64 GB host** (low, 30)
 
 SQL Server will grow until the OS has to push back, which is a bad time to find out.
 
@@ -390,7 +414,7 @@ SQL Server will grow until the OS has to push back, which is a bad time to find 
 Next steps:
 1. Set it to leave several GB (more on big hosts) for the OS and anything else running there.
 
-**31. Wait: HADR_SYNC_COMMIT** (low, 28)
+**33. Wait: HADR_SYNC_COMMIT** (low, 28)
 
 Commits on the primary wait for a synchronous secondary to harden the log.
 
@@ -403,7 +427,7 @@ Next steps:
 1. Check log send queue, network latency and secondary log write latency.
 1. See the availability group section of this report.
 
-**32. Page life expectancy is 180 seconds** (low, 25)
+**34. Page life expectancy is 180 seconds** (low, 25)
 
 Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
 
@@ -412,7 +436,7 @@ Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop ma
 Next steps:
 1. Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
 
-**33. Log: Staging has 640 VLFs** (low, 20)
+**35. Log: Staging has 640 VLFs** (low, 20)
 
 - 640 VLFs in 6,144 MB of log (12 active)
 

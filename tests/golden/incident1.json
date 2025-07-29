@@ -129,6 +129,52 @@
       }
     },
     {
+      "check": "agent",
+      "title": "Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)",
+      "severity": "high",
+      "score": 76,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "3 failure(s) in the last 24 hours, most recent at 2023-03-14T09:45:00",
+        "ran for 14s before failing",
+        "failing step 1 (DatabaseBackup - USER_DATABASES - LOG): error 3041, severity 16",
+        "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041). The step failed.",
+        "also shows up as: Log backups: PayrollDB last one was 1h10m ago, Log backups: ReportsDB last one was 12h00m ago"
+      ],
+      "advice": [
+        "A backup failed; the real reason is in the SQL Server error log just before this time."
+      ],
+      "data": {
+        "job": "DatabaseBackup - USER_DATABASES - LOG",
+        "failures": 3,
+        "window_hours": 24
+      }
+    },
+    {
+      "check": "vlf",
+      "title": "Log backups: ReportsDB last one was 12h00m ago",
+      "severity": "high",
+      "score": 75,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "last log backup 12h00m ago",
+        "21,500 MB of log since then, 87% of the 24,576 MB log",
+        "the log is nearly all un-backed-up and will have to grow or fill",
+        "also shows up as: Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP",
+        "the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)"
+      ],
+      "advice": [
+        "Check the log backup job (see the Agent section) and the backup target."
+      ],
+      "data": {
+        "database": "ReportsDB",
+        "minutes_since_log_backup": 720,
+        "log_since_backup_mb": 21500.0
+      }
+    },
+    {
       "check": "ag",
       "title": "Availability group PayrollAG: PayrollDB on SQLDR02 is behind",
       "severity": "high",
@@ -208,28 +254,6 @@
         "online_schedulers": 16,
         "avg_runnable": 3.62,
         "signal_wait_pct": 6.8
-      }
-    },
-    {
-      "check": "agent",
-      "title": "Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)",
-      "severity": "high",
-      "score": 71,
-      "detail": "",
-      "block": [],
-      "evidence": [
-        "3 failure(s) in the last 24 hours, most recent at 2023-03-14T09:45:00",
-        "ran for 14s before failing",
-        "failing step 1 (DatabaseBackup - USER_DATABASES - LOG): error 3041, severity 16",
-        "Executed as user: NT SERVICE\\SQLSERVERAGENT. BACKUP failed to complete the command BACKUP LOG [PayrollDB]. Check the backup application log for detailed messages. [SQLSTATE 42000] (Error 3041). The step failed."
-      ],
-      "advice": [
-        "A backup failed; the real reason is in the SQL Server error log just before this time."
-      ],
-      "data": {
-        "job": "DatabaseBackup - USER_DATABASES - LOG",
-        "failures": 3,
-        "window_hours": 24
       }
     },
     {
@@ -395,7 +419,8 @@
       "evidence": [
         "2,300 VLFs in 24,576 MB of log (2100 active)",
         "log autogrowth is 64 MB, which is how it got this many",
-        "log_reuse_wait_desc = LOG_BACKUP: The log cannot be truncated until the next log backup."
+        "log_reuse_wait_desc = LOG_BACKUP: The log cannot be truncated until the next log backup.",
+        "waiting on the log backup described in: Log backups: ReportsDB last one was 12h00m ago"
       ],
       "advice": [
         "Shrink the log once and regrow it in a few large steps to rebuild the VLFs.",
@@ -592,6 +617,27 @@
         "database": "ReportsDB",
         "state": "READ_WRITE",
         "storage_used_pct": 96.0
+      }
+    },
+    {
+      "check": "vlf",
+      "title": "Log backups: PayrollDB last one was 1h10m ago",
+      "severity": "medium",
+      "score": 40,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "last log backup 1h10m ago",
+        "41,200 MB of log since then, 67% of the 61,440 MB log",
+        "the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)"
+      ],
+      "advice": [
+        "Check the log backup job (see the Agent section) and the backup target."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "minutes_since_log_backup": 70,
+        "log_since_backup_mb": 41200.0
       }
     },
     {

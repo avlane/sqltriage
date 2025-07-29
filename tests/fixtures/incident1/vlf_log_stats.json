@@ -1,0 +1,20 @@
+[
+  {
+    "database_name": "PayrollDB",
+    "log_backup_time": "2023-03-14T08:50:00",
+    "minutes_since_log_backup": 70,
+    "log_since_last_log_backup_mb": 41200.0,
+    "total_log_size_mb": 61440.0,
+    "active_log_size_mb": 58000.0,
+    "log_truncation_holdup_reason": "ACTIVE_TRANSACTION"
+  },
+  {
+    "database_name": "ReportsDB",
+    "log_backup_time": "2023-03-14T08:50:00",
+    "minutes_since_log_backup": 720,
+    "log_since_last_log_backup_mb": 21500.0,
+    "total_log_size_mb": 24576.0,
+    "active_log_size_mb": 22000.0,
+    "log_truncation_holdup_reason": "LOG_BACKUP"
+  }
+]

@@ -8,6 +8,51 @@ from sqltriage.source import FixtureSource, SourceError
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
 
+class LogBackupTests(unittest.TestCase):
+    def stats(self, minutes, since=100.0, total=1000.0):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return [{"database_name": "Sales", "minutes_since_log_backup": minutes, "log_since_last_log_backup_mb": since,
+                         "total_log_size_mb": total, "active_log_size_mb": since}]
+
+        return vlf.log_backup_findings(Context(Fake(FIXTURES)))
+
+    def test_recent_backup_is_fine(self):
+        self.assertEqual(self.stats(20), [])
+
+    def test_levels(self):
+        (hour,) = self.stats(75)
+        (long_ago,) = self.stats(300)
+        self.assertEqual((hour.score, long_ago.score), (40, 60))
+        self.assertEqual(hour.title, "Log backups: Sales last one was 1h15m ago")
+
+    def test_never_backed_up(self):
+        (finding,) = self.stats(None)
+        self.assertEqual(finding.score, 70)
+        self.assertEqual(finding.title, "Log backups: Sales has never had one")
+
+    def test_nearly_all_unbacked_up_log_scores_higher(self):
+        (finding,) = self.stats(75, since=900.0)
+        self.assertEqual(finding.score, 55)
+        self.assertIn("the log is nearly all un-backed-up and will have to grow or fill", finding.evidence)
+
+    def test_incident(self):
+        findings = vlf.log_backup_findings(Context(FixtureSource(FIXTURES)))
+        self.assertEqual([(f.data["database"], f.score) for f in findings], [("PayrollDB", 40 + 0), ("ReportsDB", 60 + 15)])
+        self.assertEqual(findings[1].evidence[1], "21,500 MB of log since then, 87% of the 24,576 MB log")
+
+    def test_unreadable(self):
+        class Denied(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                raise SourceError("denied")
+
+        self.assertEqual(vlf.log_backup_findings(Context(Denied(FIXTURES))), [])
+
+    def test_database_filter(self):
+        ctx = Context(FixtureSource(FIXTURES), options={"databases": ["ReportsDB"]})
+        self.assertEqual([f.data["database"] for f in vlf.log_backup_findings(ctx)], ["ReportsDB"])
+
+
 class VlfTests(unittest.TestCase):
     def test_query_leaves_out_snapshots_and_inaccessible_databases(self):
         self.assertIn("d.source_database_id IS NULL", vlf.SQL)
@@ -21,7 +66,7 @@ class VlfTests(unittest.TestCase):
         self.assertEqual(vlf.vlf_score(20000), 80)
 
     def test_incident(self):
-        findings = vlf.run(Context(FixtureSource(FIXTURES)))
+        findings = vlf.log_findings(Context(FixtureSource(FIXTURES)))
         by_db = {f.data["database"]: f for f in findings}
         self.assertEqual(sorted(by_db), ["PayrollDB", "ReportsDB", "Staging"])
         payroll = by_db["PayrollDB"]
@@ -30,7 +75,7 @@ class VlfTests(unittest.TestCase):
         self.assertIn("ACTIVE_TRANSACTION", payroll.title)
 
     def test_growth_is_blamed_when_it_is_the_cause(self):
-        findings = vlf.run(Context(FixtureSource(FIXTURES)))
+        findings = vlf.log_findings(Context(FixtureSource(FIXTURES)))
         by_db = {f.data["database"]: f for f in findings}
         self.assertIn("log autogrowth is 10%, which is how it got this many", by_db["PayrollDB"].evidence)
         self.assertIn("log autogrowth is 64 MB, which is how it got this many", by_db["ReportsDB"].evidence)
@@ -67,7 +112,7 @@ class VlfTests(unittest.TestCase):
                     raise SourceError("denied")
                 return super().fetch(name, sql, params, database)
 
-        self.assertEqual(len(vlf.run(Context(NoGrowth(FIXTURES)))), 3)
+        self.assertEqual(len(vlf.log_findings(Context(NoGrowth(FIXTURES)))), 3)
 
     def test_reuse_wait_alone_is_reported(self):
         class One(FixtureSource):
@@ -85,7 +130,7 @@ class VlfTests(unittest.TestCase):
                     }
                 ]
 
-        (finding,) = vlf.run(Context(One(FIXTURES)))
+        (finding,) = vlf.log_findings(Context(One(FIXTURES)))
         self.assertEqual(finding.score, 50)
         self.assertEqual(finding.title, "Log: Sales has log reuse wait LOG_BACKUP")
 
@@ -105,7 +150,7 @@ class VlfTests(unittest.TestCase):
                     }
                 ]
 
-        (finding,) = vlf.run(Context(One(FIXTURES)))
+        (finding,) = vlf.log_findings(Context(One(FIXTURES)))
         self.assertEqual(finding.score, 30)
 
 

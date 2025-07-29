@@ -1,4 +1,5 @@
 """Virtual log file counts and the log reuse wait for every online database."""
+from ..fmt import span
 from ..models import Finding
 from ..scoring import step_score
 from ..source import SourceError
@@ -22,7 +23,28 @@ WHERE d.state = 0
   AND HAS_DBACCESS(d.name) = 1
 GROUP BY d.name, d.recovery_model_desc, d.log_reuse_wait_desc;"""
 
-# Log file growth settings; with percentage growth the VLF count creeps up
+# How long since the last log backup, and how much log has piled up since.  Only
+# databases whose log is meant to be backed up (FULL and BULK_LOGGED recovery).
+LOG_STATS_SQL = """\
+SELECT d.name AS database_name,
+       ls.log_backup_time,
+       DATEDIFF(MINUTE, ls.log_backup_time, GETDATE()) AS minutes_since_log_backup,
+       ls.log_since_last_log_backup_mb,
+       ls.total_log_size_mb,
+       ls.active_log_size_mb,
+       ls.log_truncation_holdup_reason
+FROM sys.databases AS d
+CROSS APPLY sys.dm_db_log_stats(d.database_id) AS ls
+WHERE d.state = 0
+  AND d.recovery_model_desc <> 'SIMPLE'
+  AND d.source_database_id IS NULL
+  AND d.database_id > 4
+  AND HAS_DBACCESS(d.name) = 1;"""
+
+# (minutes since the last log backup at or above, score)
+BACKUP_AGE_LEVELS = [(240, 60), (60, 40)]
+
+# Log growth settings; with percentage growth the VLF count creeps up
 # and every growth gets bigger, so it is the usual reason a log has too many.
 GROWTH_SQL = """\
 SELECT DB_NAME(mf.database_id) AS database_name,
@@ -88,7 +110,52 @@ def growth_notes(rows):
     return notes
 
 
+def log_backup_findings(ctx):
+    """FULL / BULK_LOGGED databases whose log has not been backed up lately."""
+    try:
+        rows = ctx.source.fetch("vlf_log_stats", LOG_STATS_SQL)
+    except SourceError:
+        return []
+    findings = []
+    for row in rows:
+        if not ctx.wants_database(row["database_name"]):
+            continue
+        minutes = row.get("minutes_since_log_backup")
+        total = row["total_log_size_mb"] or 0
+        unbacked = row["log_since_last_log_backup_mb"] or 0
+        share = 100.0 * unbacked / total if total else 0.0
+        if minutes is None:
+            score = 70
+            evidence = ["no log backup has ever been taken in FULL or BULK_LOGGED recovery, so the log can never be truncated"]
+        else:
+            score = step_score(minutes, BACKUP_AGE_LEVELS)
+            evidence = ["last log backup {} ago".format(span(minutes * 60))]
+        if not score:
+            continue
+        evidence.append("{:,.0f} MB of log since then, {:.0f}% of the {:,.0f} MB log".format(unbacked, share, total))
+        if share >= 80:
+            score = min(95, score + 15)
+            evidence.append("the log is nearly all un-backed-up and will have to grow or fill")
+        findings.append(
+            Finding(
+                check=NAME,
+                title="Log backups: {} {}".format(
+                    row["database_name"], "has never had one" if minutes is None else "last one was {} ago".format(span(minutes * 60))
+                ),
+                score=score,
+                evidence=evidence,
+                advice=["Check the log backup job (see the Agent section) and the backup target."],
+                data={"database": row["database_name"], "minutes_since_log_backup": minutes, "log_since_backup_mb": unbacked},
+            )
+        )
+    return findings
+
+
 def run(ctx):
+    return log_findings(ctx) + log_backup_findings(ctx)
+
+
+def log_findings(ctx):
     findings = []
     try:
         growth = growth_notes(ctx.source.fetch("vlf_growth", GROWTH_SQL))
