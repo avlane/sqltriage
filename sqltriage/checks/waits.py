@@ -92,11 +92,9 @@ def sample(ctx):
         reset = any(was_reset(a, b) for a, b in zip(snapshots, snapshots[1:]))
         ctx.cache["waits_reset"] = reset
         ctx.cache["waits"] = [] if reset else compute_delta(snapshots[0], snapshots[-1])
-        ctx.cache["waits_intervals"] = (
-            []
-            if reset
-            else [{d.wait_type: d.wait_ms for d in compute_delta(a, b)} for a, b in zip(snapshots, snapshots[1:])]
-        )
+        per_interval = [] if reset else [compute_delta(a, b) for a, b in zip(snapshots, snapshots[1:])]
+        ctx.cache["waits_deltas"] = per_interval  # full WaitDelta lists, one per interval
+        ctx.cache["waits_intervals"] = [{d.wait_type: d.wait_ms for d in deltas} for deltas in per_interval]
     return ctx.cache["waits"]
 
 

@@ -57,6 +57,36 @@ class TopRequestsTests(unittest.TestCase):
         self.assertTrue(any(e.startswith("spid 112 ") for e in finding.evidence))
 
 
+class SignalTrendTests(unittest.TestCase):
+    def deltas(self, signal_pct):
+        return [waits.WaitDelta("WRITELOG", 10, 1000, int(10 * signal_pct), None)]
+
+    def run_with(self, pcts):
+        c = ctx()
+        c.cache["waits"] = self.deltas(pcts[-1])
+        c.cache["waits_deltas"] = [self.deltas(p) for p in pcts]
+        (finding,) = cpu.run(c)
+        return finding
+
+    def test_trend_line(self):
+        finding = self.run_with([10, 20, 40])
+        self.assertIn("signal wait share per interval: 10%, 20%, 40% (rising)", finding.evidence)
+
+    def test_rising_and_already_high_scores_higher(self):
+        rising = self.run_with([10, 20, 40])
+        steady = self.run_with([40, 40, 40])
+        self.assertEqual(rising.score - steady.score, 5)
+
+    def test_rising_but_low_does_not(self):
+        low_rising = self.run_with([2, 4, 8])
+        low_steady = self.run_with([8, 8, 8])
+        self.assertEqual(low_rising.score, low_steady.score)
+
+    def test_single_interval_has_no_trend_line(self):
+        finding = self.run_with([30])
+        self.assertFalse(any("per interval" in e for e in finding.evidence))
+
+
 class ImbalanceTests(unittest.TestCase):
     def test_hot_scheduler(self):
         online = [sched(0, 12)] + [sched(i, 1) for i in range(1, 8)]

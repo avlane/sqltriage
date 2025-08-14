@@ -142,6 +142,9 @@ def run(ctx):
     queued = sum(1 for r in online if r["work_queue_count"] > 0)
     signal = signal_wait_pct(waits.sample(ctx))
 
+    per_interval = [signal_wait_pct(deltas) for deltas in ctx.cache.get("waits_deltas", [])]
+    direction = waits.trend(per_interval) if len(per_interval) > 1 else None
+
     runnable_score = step_score(average, RUNNABLE_LEVELS)
     signal_score = step_score(signal, SIGNAL_LEVELS)
     score = max(runnable_score, signal_score)
@@ -149,12 +152,18 @@ def run(ctx):
         score += 5
     if queued:
         score += 5
+    if direction == "rising" and per_interval[-1] >= SIGNAL_LEVELS[-1][0]:
+        score += 5  # signal waits are climbing through the sample and already high
     score = clamp(score, high=95)
 
     evidence = [
         "{} online schedulers, runnable queue average {:.1f}, maximum {}".format(len(online), average, max(runnable)),
         "signal waits are {:.1f}% of non-idle wait time (15% or more is a concern)".format(signal),
     ]
+    if direction:
+        evidence.append(
+            "signal wait share per interval: {} ({})".format(", ".join("{:.0f}%".format(p) for p in per_interval), direction)
+        )
     if queued:
         evidence.append("{} scheduler(s) have tasks queued for a worker (work_queue_count > 0)".format(queued))
     if offline:
