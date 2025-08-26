@@ -267,9 +267,11 @@ Next steps:
 - recent waits: Lock 91%, Tran Log IO 5%, Buffer IO 4%
 - 2 plan(s) seen for this query
 - text: (@p0 int)SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId
+- the server recommends forcing plan 91 instead of 112 (score 87): Average query CPU time changed from 508.55ms to 1948.17ms
 
 Next steps:
 1. Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.
+1. Run: exec sp_query_store_force_plan 4412, 91;
 1. In Query Store, compare the plans for query 4412 and consider forcing the earlier one (sp_query_store_force_plan).
 
 **20. Wait: LCK_M_X** (medium, 56)

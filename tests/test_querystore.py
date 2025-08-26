@@ -122,6 +122,49 @@ class WaitTests(unittest.TestCase):
         self.assertIn("DATEADD(HOUR, -2, SYSDATETIMEOFFSET())", seen[0])
 
 
+class TuningTests(unittest.TestCase):
+    def rec(self, query_id, score, recommended=2):
+        return {"query_id": query_id, "score": score, "regressed_plan_id": 1, "recommended_plan_id": recommended,
+                "reason": "CPU time changed", "script": "exec sp_query_store_force_plan {}, {};".format(query_id, recommended)}
+
+    def test_best_recommendation_per_query(self):
+        best = querystore.tuning_by_query([self.rec(7, 50, 2), self.rec(7, 90, 3), self.rec(8, 10), {"query_id": None, "score": 99}])
+        self.assertEqual(sorted(best), [7, 8])
+        self.assertEqual(best[7]["recommended_plan_id"], 3)
+
+    def test_recommendation_is_attached_to_the_regression(self):
+        findings = [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "ratio" in f.data]
+        first, second = findings
+        self.assertIn("the server recommends forcing plan 91 instead of 112 (score 87): Average query CPU time changed from 508.55ms to 1948.17ms", first.evidence)
+        self.assertIn("Run: exec sp_query_store_force_plan 4412, 91;", first.advice)
+        self.assertFalse(any("recommends" in e for e in second.evidence))
+
+    def test_no_recommendation_leaves_the_finding_alone(self):
+        row = FixtureSource(FIXTURES).fetch("querystore_regressions", "", database="PayrollDB")[0]
+        self.assertEqual(
+            querystore.regression_finding("PayrollDB", row).evidence,
+            querystore.regression_finding("PayrollDB", row, (), None).evidence,
+        )
+
+    def test_old_servers_without_the_view(self):
+        class Old(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "querystore_tuning":
+                    raise SourceError("Invalid object name 'sys.dm_db_tuning_recommendations'")
+                return super().fetch(name, sql, params, database)
+
+        findings = [f for f in querystore.run(Context(Old(FIXTURES))) if "ratio" in f.data]
+        self.assertEqual(len(findings), 2)
+        self.assertFalse(any("recommends" in e for f in findings for e in f.evidence))
+
+    def test_recommendation_without_a_script(self):
+        rec = self.rec(4412, 80)
+        rec["script"] = None
+        row = FixtureSource(FIXTURES).fetch("querystore_regressions", "", database="PayrollDB")[0]
+        finding = querystore.regression_finding("PayrollDB", row, (), rec)
+        self.assertFalse(any(a.startswith("Run:") for a in finding.advice))
+
+
 class ForcedPlanTests(unittest.TestCase):
     def findings(self):
         return [f for f in querystore.run(Context(FixtureSource(FIXTURES))) if "failures" in f.data]

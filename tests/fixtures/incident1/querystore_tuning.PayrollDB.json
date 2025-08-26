@@ -1,0 +1,13 @@
+[
+  {
+    "name": "UQ_4412_91",
+    "reason": "Average query CPU time changed from 508.55ms to 1948.17ms",
+    "score": 87,
+    "query_id": 4412,
+    "regressed_plan_id": 112,
+    "recommended_plan_id": 91,
+    "state_value": "Active",
+    "last_refresh": "2023-03-14T09:40:12",
+    "script": "exec sp_query_store_force_plan 4412, 91;"
+  }
+]

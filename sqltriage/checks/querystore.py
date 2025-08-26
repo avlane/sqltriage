@@ -97,6 +97,22 @@ SECONDARY_REPLICA = 8  # expected on a readable secondary, not a problem
 
 STORAGE_FULL_PCT = 90
 
+# Plan forcing the server itself suggests (SQL Server 2017 and later; the
+# recommendation details are JSON).  Active ones have not been applied yet.
+TUNING_SQL = """\
+SELECT tr.name,
+       tr.reason,
+       tr.score,
+       CAST(JSON_VALUE(tr.details, '$.planForceDetails.queryId') AS int) AS query_id,
+       CAST(JSON_VALUE(tr.details, '$.planForceDetails.regressedPlanId') AS int) AS regressed_plan_id,
+       CAST(JSON_VALUE(tr.details, '$.planForceDetails.recommendedPlanId') AS int) AS recommended_plan_id,
+       JSON_VALUE(tr.state, '$.currentValue') AS state_value,
+       tr.last_refresh,
+       JSON_VALUE(tr.details, '$.implementationDetails.script') AS script
+FROM sys.dm_db_tuning_recommendations AS tr
+WHERE JSON_VALUE(tr.state, '$.currentValue') = 'Active'
+ORDER BY tr.score DESC;"""
+
 # What the query waited on in the recent window (Query Store wait stats need
 # SQL Server 2017 and WAIT_STATS_CAPTURE_MODE = ON, which is the default).
 WAITS_SQL = """\
@@ -208,7 +224,18 @@ def wait_breakdown(waits):
     return [(w["wait_category_desc"], w["total_wait_ms"] / total) for w in waits]
 
 
-def regression_finding(database, row, waits=()):
+def tuning_by_query(rows):
+    """query_id -> the highest scoring active recommendation for it."""
+    best = {}
+    for row in rows:
+        if row.get("query_id") is None:
+            continue
+        if row["query_id"] not in best or row["score"] > best[row["query_id"]]["score"]:
+            best[row["query_id"]] = row
+    return best
+
+
+def regression_finding(database, row, waits=(), recommendation=None):
     recent = float(row["recent_avg_duration_us"])
     history = float(row["history_avg_duration_us"])
     ratio = recent / history if history else float("inf")
@@ -232,6 +259,17 @@ def regression_finding(database, row, waits=()):
         if breakdown[0][0] == "Lock" and breakdown[0][1] >= LOCK_BLAME_SHARE:
             score = max(score - 20, 20)
             advice.append("Mostly lock waits: the query is slow because it is blocked, not because of its plan. See the blocking section.")
+    if recommendation:
+        evidence.append(
+            "the server recommends forcing plan {} instead of {} (score {}): {}".format(
+                recommendation["recommended_plan_id"],
+                recommendation["regressed_plan_id"],
+                recommendation["score"],
+                recommendation["reason"],
+            )
+        )
+        if recommendation.get("script"):
+            advice.append("Run: " + recommendation["script"])
     if row["plan_count"] and row["plan_count"] > 1:
         advice.append(
             "In Query Store, compare the plans for query {} and consider forcing the earlier one "
@@ -329,8 +367,14 @@ def check_database(ctx, database, sql):
         finding = state_finding(database, row)
         if finding:
             findings.append(finding)
+    try:
+        tuning = tuning_by_query(ctx.source.fetch("querystore_tuning", TUNING_SQL, database=database))
+    except SourceError:
+        tuning = {}  # SQL Server 2016, or the view is not readable
     for row in ctx.source.fetch("querystore_regressions", sql, database=database):
-        findings.append(regression_finding(database, row, recent_waits(ctx, database, row["query_id"])))
+        findings.append(
+            regression_finding(database, row, recent_waits(ctx, database, row["query_id"]), tuning.get(row["query_id"]))
+        )
     for row in ctx.source.fetch("querystore_forced_failures", FORCED_FAILURES_SQL, database=database):
         findings.append(force_failure_finding(database, row))
     return findings
