@@ -25,6 +25,27 @@ class SqlTests(unittest.TestCase):
         self.assertIn(">= 20", sql)
 
 
+class BaselineTests(unittest.TestCase):
+    def row(self, history_us):
+        return {"query_id": 1, "query_sql_text": "SELECT 1", "object_name": None, "recent_execs": 50, "history_execs": 500,
+                "recent_avg_duration_us": 40000.0, "history_avg_duration_us": history_us, "plan_count": 2}
+
+    def test_zero_baseline_does_not_give_infinity(self):
+        finding = querystore.regression_finding("Sales", self.row(0.0))
+        self.assertEqual(finding.data["ratio"], 40.0)
+        self.assertNotIn("inf", finding.title)
+        self.assertLessEqual(finding.score, 95)
+
+    def test_normal_baseline_is_untouched(self):
+        self.assertEqual(querystore.regression_finding("Sales", self.row(10000.0)).data["ratio"], 4.0)
+
+    def test_minimum_slowdown_is_in_the_query(self):
+        sql = querystore.regression_sql(Context(FixtureSource(FIXTURES)))
+        self.assertIn(">= 5000", sql)
+        sql = querystore.regression_sql(Context(FixtureSource(FIXTURES), options={"qs_min_delta_ms": 0.5}))
+        self.assertIn(">= 500", sql)
+
+
 class ScoreTests(unittest.TestCase):
     def test_bigger_slowdowns_and_more_lost_time_score_higher(self):
         self.assertLess(querystore.regression_score(2.0, 10), querystore.regression_score(4.0, 10))

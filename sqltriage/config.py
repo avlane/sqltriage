@@ -53,6 +53,7 @@ OPTION_KEYS = {
         "lookback_hours": "qs_lookback_hours",
         "min_execs": "qs_min_execs",
         "ratio": "qs_ratio",
+        "min_delta_ms": "qs_min_delta_ms",
         "top": "qs_top",
     },
 }

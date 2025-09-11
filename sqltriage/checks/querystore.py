@@ -9,6 +9,7 @@ DEFAULTS = {
     "qs_lookback_hours": 25,  # recent window plus the baseline before it
     "qs_min_execs": 10,       # executions needed in both windows to trust the average
     "qs_ratio": 2.0,          # recent average must be this many times the baseline
+    "qs_min_delta_ms": 5,     # ... and be at least this much slower, so 0.1 ms to 0.4 ms is ignored
     "qs_top": 5,
 }
 
@@ -72,6 +73,7 @@ JOIN sys.query_store_query_text AS qt
 WHERE a.recent_execs >= {min_execs}
   AND a.history_execs >= {min_execs}
   AND a.recent_duration_us / a.recent_execs > {ratio} * (a.history_duration_us / a.history_execs)
+  AND a.recent_duration_us / a.recent_execs - a.history_duration_us / a.history_execs >= {min_delta_us}
 ORDER BY (a.recent_duration_us / a.recent_execs - a.history_duration_us / a.history_execs) * a.recent_execs DESC;"""
 
 # Is Query Store actually collecting?  Run inside each database.
@@ -202,6 +204,7 @@ def regression_sql(ctx):
         lookback_hours=int(setting(ctx, "qs_lookback_hours")),
         min_execs=int(setting(ctx, "qs_min_execs")),
         ratio="{:.2f}".format(float(setting(ctx, "qs_ratio"))),
+        min_delta_us=int(float(setting(ctx, "qs_min_delta_ms")) * 1000),
         top=int(setting(ctx, "qs_top")),
     )
 
@@ -209,6 +212,10 @@ def regression_sql(ctx):
 def shorten(text):
     text = " ".join(str(text or "").split())
     return text if len(text) <= TEXT_LIMIT else text[: TEXT_LIMIT - 3] + "..."
+
+
+# A baseline that rounds to nothing would make any slowdown "infinitely" slower.
+MIN_BASELINE_US = 1000
 
 
 def regression_score(ratio, extra_seconds):
@@ -238,7 +245,7 @@ def tuning_by_query(rows):
 def regression_finding(database, row, waits=(), recommendation=None):
     recent = float(row["recent_avg_duration_us"])
     history = float(row["history_avg_duration_us"])
-    ratio = recent / history if history else float("inf")
+    ratio = recent / max(history, MIN_BASELINE_US)
     extra_seconds = (recent - history) * row["recent_execs"] / 1e6
     label = row.get("object_name") or "ad hoc query"
     evidence = [
