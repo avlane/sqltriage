@@ -71,6 +71,17 @@ class MarkdownTests(unittest.TestCase):
         self.assertIn("**2. Log: Sales has 1,200 VLFs** (medium, 45)", md)
         self.assertIn("Next steps:\n1. Find out why spid 57 is not finishing.", md)
 
+    def test_pipes_in_titles_do_not_break_the_table(self):
+        report = Report("S", [Finding("agent", "Agent job failed: Load | Transform", 50)], [], WHEN)
+        md = to_markdown(report)
+        self.assertIn("| 1 | medium | 50 | Agent job failed: Load \\| Transform |", md)
+        self.assertIn("**1. Agent job failed: Load | Transform**", md)
+
+    def test_newlines_in_titles_are_flattened(self):
+        from sqltriage.render.markdown import table_cell
+
+        self.assertEqual(table_cell("a\nb  c"), "a b c")
+
     def test_tree_is_fenced(self):
         md = to_markdown(sample_report())
         self.assertIn("```\nspid 57 [sleeping]  <- head blocker\n`- spid 61 LCK_M_X 94.0s\n```", md)

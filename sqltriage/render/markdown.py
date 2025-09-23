@@ -3,6 +3,11 @@ from .. import instance
 from .common import fmt_time
 
 
+def table_cell(text):
+    """Make text safe inside a Markdown table cell: a bare | would start a new column."""
+    return " ".join(str(text).split()).replace("|", "\\|")
+
+
 def to_markdown(report):
     """Markdown that pastes cleanly into a ticket comment."""
     lines = [
@@ -20,7 +25,7 @@ def to_markdown(report):
         lines.append("| # | Severity | Score | Finding |")
         lines.append("|---|----------|-------|---------|")
         for number, f in enumerate(report.findings, 1):
-            lines.append("| {} | {} | {} | {} |".format(number, f.severity, f.score, f.title))
+            lines.append("| {} | {} | {} | {} |".format(number, f.severity, f.score, table_cell(f.title)))
         for number, f in enumerate(report.findings, 1):
             lines.append("")
             lines.append("**{}. {}** ({}, {})".format(number, f.title, f.severity, f.score))
