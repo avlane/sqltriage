@@ -205,7 +205,7 @@ sqltriage report for SQLPROD01
 No database and no third party packages are needed.
 
 The tests also run on GitHub Actions (`.github/workflows/test.yml`) for
-Python 3.11, 3.12 and 3.13, and fail if the golden report files are out of date
+Python 3.11 to 3.14 (warnings are errors), and fail if the golden report files are out of date
 (`python -m tests.regen_golden` rewrites them).
 
 ## License
