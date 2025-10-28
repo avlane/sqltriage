@@ -119,6 +119,13 @@ files replay with `--fixtures DIR`, so you can look at the same data again later
 or attach it to a ticket. They contain real query text, logins and host names:
 read them before sharing.
 
+## Sharing a report
+
+`--redact` masks string literals, long numbers, hex values and e-mail addresses
+in the report, which is where query text leaks real data. `--redact-names` also
+replaces logins and host names with stable tokens (`user1@host1`). It is a
+safety net, so read the report before it goes into a ticket.
+
 ## Exit status
 
 `0` normally, `1` when `--fail-on LEVEL` is given and a finding is at least that

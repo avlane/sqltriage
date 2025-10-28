@@ -10,6 +10,7 @@ from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
 from .render import FORMATS
 from .models import LEVELS, severity_rank
+from .redact import redact_findings
 from .report import build_report, filter_report
 from .source import FixtureSource, MssqlPythonSource, PyodbcSource, RecordingSource
 
@@ -48,6 +49,9 @@ def build_parser():
     parser.add_argument("--weight", action="append", metavar="CHECK=FACTOR", default=[],
                         help="scale a check's scores, such as agent=0.5 (repeatable)")
     parser.add_argument("--check", action="store_true", help="test the connection and permissions, then exit")
+    parser.add_argument("--redact", action="store_true",
+                        help="mask string and number literals, hex values and e-mail addresses in the report")
+    parser.add_argument("--redact-names", action="store_true", help="replace logins and host names with tokens (implies --redact)")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -162,6 +166,8 @@ def main(argv=None, out=None):
         report = build_report(ctx, args.server, names)
     finally:
         source.close()
+    if args.redact or args.redact_names:
+        redact_findings(report.findings, names=args.redact_names)
     failing = args.fail_on is not None and any(f.severity_rank >= severity_rank(args.fail_on) for f in report.findings)
     if args.min_severity != "info":
         report = filter_report(report, args.min_severity)

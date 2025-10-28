@@ -162,6 +162,21 @@ class CliTests(unittest.TestCase):
         self.assertIn("connected to SQLPROD01", text)
         self.assertIn("ok: can read the server DMVs", text)
 
+    def test_redact(self):
+        _, plain = self.run_cli("--only", "blocking,querystore")
+        _, masked = self.run_cli("--only", "blocking,querystore", "--redact-names")
+        self.assertIn("svc_payroll@APP02", plain)
+        self.assertIn("jmendez", plain)
+        self.assertNotIn("svc_payroll", masked)
+        self.assertNotIn("jmendez", masked)
+        self.assertNotIn("TODO: commit after checking totals'", masked)
+        self.assertIn("user1@host1", masked)
+
+    def test_redact_alone_keeps_names(self):
+        _, text = self.run_cli("--only", "blocking", "--redact")
+        self.assertIn("svc_payroll@APP02", text)
+        self.assertIn("Language Event: BEGIN TRAN; UPDATE dbo.Orders SET Status = '?'", text)
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))
