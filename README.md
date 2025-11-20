@@ -43,7 +43,7 @@ certificate use `--trust-server-cert`; `--no-encrypt` turns encryption off.
 
 The login needs `VIEW SERVER STATE` and `VIEW ANY DEFINITION`. The VLF check
 uses `sys.dm_db_log_info`, so SQL Server 2016 SP2 or later; the other checks run
-on 2016 and later. Python 3.11 or newer is needed.
+on 2016 and later, up to SQL Server 2025. Python 3.11 or newer is needed.
 
 Output formats (`-f`): `text` (the default), `json` (with a `schema_version`)
 and `markdown` for pasting into a ticket. `--min-severity high` hides the lower

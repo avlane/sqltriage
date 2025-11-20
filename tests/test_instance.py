@@ -31,6 +31,25 @@ class InstanceTests(unittest.TestCase):
     def test_unknown_version_name(self):
         self.assertEqual(instance.product_name(99), "SQL Server (version 99)")
 
+    def test_version_names(self):
+        self.assertEqual(instance.product_name(13), "SQL Server 2016")
+        self.assertEqual(instance.product_name(16), "SQL Server 2022")
+        self.assertEqual(instance.product_name(17), "SQL Server 2025")
+
+    def test_a_2025_instance_gets_the_newer_checks(self):
+        from sqltriage.context import Context
+
+        class V17(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                rows = super().fetch(name, sql, params, database)
+                if name == "instance_info":
+                    rows[0].update(major_version=17, product_version="17.0.1000.7")
+                return rows
+
+        ctx = Context(V17(FIXTURES))
+        self.assertEqual(ctx.server_major(), 17)
+        self.assertEqual(ctx.instance_info()["product_name"], "SQL Server 2025")
+
 
 if __name__ == "__main__":
     unittest.main()

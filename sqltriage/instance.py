@@ -18,6 +18,7 @@ MARKETING_NAMES = {
     14: "SQL Server 2017",
     15: "SQL Server 2019",
     16: "SQL Server 2022",
+    17: "SQL Server 2025",
 }
 
 
