@@ -5,7 +5,7 @@ have everything they need except CPU.  And the share of wait time that is
 *signal* wait (time spent runnable after the resource wait ended) says how long
 tasks queue for a CPU in general.
 """
-from ..fmt import span
+from ..fmt import clean_text, span
 from ..models import Finding
 from ..source import SourceError
 from ..scoring import clamp, step_score
@@ -107,9 +107,7 @@ def top_requests(ctx):
         return []
     lines = []
     for row in rows[:3]:
-        text = " ".join(str(row.get("statement_text") or "").split())
-        if len(text) > STATEMENT_LIMIT:
-            text = text[: STATEMENT_LIMIT - 3] + "..."
+        text = clean_text(row.get("statement_text"), STATEMENT_LIMIT)
         lines.append(
             "spid {} {}@{} used {} of CPU in {} (dop {}, {}): {}".format(
                 row["session_id"],

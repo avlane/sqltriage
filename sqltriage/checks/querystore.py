@@ -1,4 +1,5 @@
 """Query Store: queries that have got slower recently, and forced plans that fail."""
+from ..fmt import clean_text
 from ..models import Finding
 from ..source import SourceError
 
@@ -210,8 +211,7 @@ def regression_sql(ctx):
 
 
 def shorten(text):
-    text = " ".join(str(text or "").split())
-    return text if len(text) <= TEXT_LIMIT else text[: TEXT_LIMIT - 3] + "..."
+    return clean_text(text, TEXT_LIMIT)
 
 
 # A baseline that rounds to nothing would make any slowdown "infinitely" slower.

@@ -2,7 +2,7 @@
 import re
 from collections import Counter
 
-from ..fmt import span
+from ..fmt import clean_text, span
 from ..models import Finding
 from ..source import SourceError
 
@@ -249,9 +249,7 @@ def input_buffer(ctx, head):
         return None
     if not rows or not rows[0].get("event_info"):
         return None
-    text = " ".join(str(rows[0]["event_info"]).split())
-    if len(text) > INPUT_BUFFER_LIMIT:
-        text = text[: INPUT_BUFFER_LIMIT - 3] + "..."
+    text = clean_text(rows[0]["event_info"], INPUT_BUFFER_LIMIT)
     return "{}: {}".format(rows[0].get("event_type") or "input buffer", text)
 
 

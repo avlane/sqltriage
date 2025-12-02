@@ -226,6 +226,18 @@ class RunTests(unittest.TestCase):
         self.assertEqual(len(findings), 2)
         self.assertFalse(any("input buffer" in line for line in findings[0].evidence))
 
+    def test_input_buffer_with_nul_and_surrogate(self):
+        head = blocking.Node(1, {"session_id": 1})
+        head.children.append(blocking.Node(2, {"session_id": 2, "blocking_session_id": 1}))
+
+        class Odd(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                return [{"event_type": "Language Event", "event_info": "UPDATE t2 SET n = '\ud83d'\x00 WHERE id = 1"}]
+
+        line = blocking.input_buffer(Context(Odd(FIXTURES)), head)
+        self.assertEqual(line, "Language Event: UPDATE t2 SET n = '\ufffd' WHERE id = 1")
+        line.encode("utf-8")
+
     def test_long_input_buffer_is_trimmed(self):
         head = blocking.Node(1, {"session_id": 1})
         head.children.append(blocking.Node(2, {"session_id": 2, "blocking_session_id": 1}))

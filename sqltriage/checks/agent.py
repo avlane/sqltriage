@@ -1,7 +1,7 @@
 """SQL Server Agent jobs: recent failures and jobs that are running too long."""
 from collections import OrderedDict
 
-from ..fmt import span
+from ..fmt import clean_text, span
 from ..models import Finding
 from ..source import SourceError
 
@@ -228,11 +228,11 @@ def failed_job_findings(ctx):
                     step["step_id"], step["step_name"], step["sql_message_id"], step["sql_severity"]
                 )
             )
-            evidence.append(" ".join(str(step["message"]).split()))
+            evidence.append(clean_text(step["message"]))
             if step["sql_message_id"] in STEP_HINTS:
                 advice = [STEP_HINTS[step["sql_message_id"]]]
         elif latest.get("message"):
-            evidence.append(" ".join(str(latest["message"]).split()))
+            evidence.append(clean_text(latest["message"]))
         findings.append(
             Finding(
                 check=NAME,

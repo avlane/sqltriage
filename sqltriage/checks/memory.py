@@ -1,5 +1,5 @@
 """Memory: query grants waiting or oversized, and signs the instance or the OS is short."""
-from ..fmt import span
+from ..fmt import clean_text, span
 from ..models import Finding
 from ..source import SourceError
 
@@ -103,8 +103,7 @@ def gb(kb):
 
 
 def shorten(text):
-    text = " ".join(str(text or "").split())
-    return text if len(text) <= STATEMENT_LIMIT else text[: STATEMENT_LIMIT - 3] + "..."
+    return clean_text(text, STATEMENT_LIMIT)
 
 
 def waiting_finding(waiting, semaphores):
