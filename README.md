@@ -215,6 +215,8 @@ The tests also run on GitHub Actions (`.github/workflows/test.yml`) for
 Python 3.11 to 3.14 (warnings are errors), and fail if the golden report files are out of date
 (`python -m tests.regen_golden` rewrites them).
 
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 ## License
 
 MIT
