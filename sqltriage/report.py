@@ -10,6 +10,7 @@ from .scoring import apply_weights, rank
 class Report:
     def __init__(self, server, findings, errors, generated_at, instance=None):
         self.hidden = 0  # findings dropped by filter()
+        self.baseline_counts = None  # {"new": n, "worse": n, ...} when compared with a baseline
         self.instance = instance
         self.server = server
         self.findings = findings
@@ -23,6 +24,7 @@ def filter_report(report, minimum):
     kept = [f for f in report.findings if f.score >= floor]
     result = Report(report.server, kept, report.errors, report.generated_at, report.instance)
     result.hidden = len(report.findings) - len(kept)
+    result.baseline_counts = report.baseline_counts
     return result
 
 

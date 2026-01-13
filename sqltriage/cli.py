@@ -4,7 +4,7 @@ import os
 import sys
 
 from . import __version__
-from . import config, preflight
+from . import baseline, config, preflight
 from .checks import CHECKS
 from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
@@ -52,6 +52,7 @@ def build_parser():
     parser.add_argument("--redact", action="store_true",
                         help="mask string and number literals, hex values and e-mail addresses in the report")
     parser.add_argument("--redact-names", action="store_true", help="replace logins and host names with tokens (implies --redact)")
+    parser.add_argument("--baseline", metavar="FILE", help="compare with an earlier JSON report (see -f json -o)")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -151,6 +152,14 @@ def main(argv=None, out=None):
         options["weights"] = weights
     if args.blocking_min_wait is not None:
         options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
+    previous = None
+    if args.baseline:
+        try:
+            previous = baseline.load(args.baseline)
+        except baseline.BaselineError as exc:
+            source.close()
+            sys.stderr.write("{}\n".format(exc))
+            return 2
     if args.check:
         try:
             ok, lines = preflight.run(source)
@@ -166,6 +175,8 @@ def main(argv=None, out=None):
         report = build_report(ctx, args.server, names)
     finally:
         source.close()
+    if previous is not None:
+        report.baseline_counts = baseline.apply(report.findings, previous)
     if args.redact or args.redact_names:
         redact_findings(report.findings, names=args.redact_names)
     failing = args.fail_on is not None and any(f.severity_rank >= severity_rank(args.fail_on) for f in report.findings)

@@ -119,6 +119,17 @@ files replay with `--fixtures DIR`, so you can look at the same data again later
 or attach it to a ticket. They contain real query text, logins and host names:
 read them before sharing.
 
+## Comparing with an earlier report
+
+Save a report as JSON on a quiet day, or just before a change:
+
+    python -m sqltriage -S SQLPROD01 -f json -o before.json
+
+Later, `--baseline before.json` marks each finding NEW, WORSE (10 or more points
+up), BETTER or unchanged, and the header counts them. Findings are matched by
+what they are about (the session, wait type, database, query or job), not by
+their numbers.
+
 ## Sharing a report
 
 `--redact` masks string literals, long numbers, hex values and e-mail addresses

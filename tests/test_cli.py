@@ -177,6 +177,61 @@ class CliTests(unittest.TestCase):
         self.assertIn("svc_payroll@APP02", text)
         self.assertIn("Language Event: BEGIN TRAN; UPDATE dbo.Orders SET Status = '?'", text)
 
+    def save_json(self, directory, name="before.json", edit=None):
+        _, text = self.run_cli("-f", "json", "-n", "50")
+        data = json.loads(text)
+        if edit:
+            edit(data)
+        path = os.path.join(directory, name)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(data, handle)
+        return path
+
+    def test_baseline_unchanged(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.save_json(tmp)
+            _, text = self.run_cli("-n", "50", "--baseline", path)
+            self.assertRegex(text, r"against the baseline: \d+ unchanged\n")
+            self.assertNotIn(" NEW]", text)
+
+    def test_baseline_new_and_worse(self):
+        import tempfile
+
+        def edit(data):
+            data["findings"] = [f for f in data["findings"] if f["check"] != "memory"]
+            for f in data["findings"]:
+                if f["check"] == "cpu":
+                    f["score"] -= 30
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.save_json(tmp, edit=edit)
+            _, text = self.run_cli("-n", "50", "--baseline", path)
+            self.assertRegex(text, r"against the baseline: \d+ new, 1 worse, \d+ unchanged")
+            self.assertIn("HIGH 75 WORSE] CPU scheduler pressure", text)
+            self.assertIn("score was 45 in the baseline, now 75", text)
+            self.assertRegex(text, r"\[(HIGH|MEDIUM) \d+ NEW\] ")
+            _, as_json = self.run_cli("-n", "50", "-f", "json", "--baseline", path)
+            changes = {f["change"] for f in json.loads(as_json)["findings"]}
+            self.assertEqual(changes, {"same", "new", "worse"})
+            self.assertEqual(json.loads(as_json)["baseline"]["worse"], 1)
+
+    def test_baseline_in_markdown(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.save_json(tmp, edit=lambda d: d["findings"].pop(0))
+            _, text = self.run_cli("-n", "50", "-f", "markdown", "--baseline", path)
+            self.assertIn("Against the baseline: 1 new,", text)
+            self.assertRegex(text, r"\*\*1\. .*\(critical, 9\d, new\)")
+
+    def test_bad_baseline_is_a_usage_error(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, _ = self.run_cli("--baseline", "/nonexistent/before.json")
+        self.assertEqual(code, 2)
+        self.assertIn("cannot read baseline", err.getvalue())
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

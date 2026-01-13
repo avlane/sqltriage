@@ -1,6 +1,6 @@
 """Markdown report, for pasting into a ticket."""
 from .. import instance
-from .common import fmt_time
+from .common import describe_changes, fmt_time
 
 
 def table_cell(text):
@@ -19,6 +19,9 @@ def to_markdown(report):
     if instance.summary(report.instance):
         lines.insert(3, "{}".format(instance.summary(report.instance)))
         lines.insert(4, "")
+    if report.baseline_counts is not None:
+        lines.insert(len(lines) - 1, "Against the baseline: " + describe_changes(report.baseline_counts))
+        lines.insert(len(lines) - 1, "")
     if not report.findings:
         lines.append("Nothing to report.")
     else:
@@ -28,7 +31,7 @@ def to_markdown(report):
             lines.append("| {} | {} | {} | {} |".format(number, f.severity, f.score, table_cell(f.title)))
         for number, f in enumerate(report.findings, 1):
             lines.append("")
-            lines.append("**{}. {}** ({}, {})".format(number, f.title, f.severity, f.score))
+            lines.append("**{}. {}** ({}, {}{})".format(number, f.title, f.severity, f.score, ", " + f.change if f.change in ("new", "worse", "better") else ""))
             if f.detail:
                 lines.append("")
                 lines.append(f.detail)

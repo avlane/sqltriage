@@ -19,6 +19,7 @@
       "title": "Blocking: spid 57 is blocking 6 session(s)",
       "severity": "critical",
       "score": 95,
+      "change": null,
       "detail": "Longest wait 94s.",
       "block": [
         "spid 57 [sleeping] svc_payroll@APP01 open_tran=1  <- head blocker",
@@ -59,6 +60,7 @@
       "title": "Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION",
       "severity": "critical",
       "score": 90,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -84,6 +86,7 @@
       "title": "tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages",
       "severity": "high",
       "score": 81,
+      "change": null,
       "detail": "Sessions are queueing on tempdb's allocation bitmaps while creating or dropping temp objects.",
       "block": [],
       "evidence": [
@@ -110,6 +113,7 @@
       "title": "Availability group PayrollAG: failover to SQLPROD02 is not ready",
       "severity": "high",
       "score": 80,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -133,6 +137,7 @@
       "title": "Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)",
       "severity": "high",
       "score": 76,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -156,6 +161,7 @@
       "title": "Log backups: ReportsDB last one was 12h00m ago",
       "severity": "high",
       "score": 75,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -179,6 +185,7 @@
       "title": "Availability group PayrollAG: PayrollDB on SQLDR02 is behind",
       "severity": "high",
       "score": 75,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -209,6 +216,7 @@
       "title": "Availability group PayrollAG: ReportsDB on SQLPROD02 is behind",
       "severity": "high",
       "score": 75,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -235,6 +243,7 @@
       "title": "CPU scheduler pressure: runnable queue averages 3.6 per scheduler",
       "severity": "high",
       "score": 75,
+      "change": null,
       "detail": "Tasks are waiting for CPU time.",
       "block": [],
       "evidence": [
@@ -261,6 +270,7 @@
       "title": "tempdb is 90% full",
       "severity": "high",
       "score": 70,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -282,6 +292,7 @@
       "title": "Availability group PayrollAG: replica SQLDR02 is unhealthy",
       "severity": "high",
       "score": 70,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -304,6 +315,7 @@
       "title": "Agent job running long: IndexOptimize - USER_DATABASES (9h00m)",
       "severity": "high",
       "score": 68,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -323,6 +335,7 @@
       "title": "3 queries waiting for a memory grant",
       "severity": "high",
       "score": 68,
+      "change": null,
       "detail": "Queries cannot start until memory is granted; this shows as RESOURCE_SEMAPHORE waits.",
       "block": [],
       "evidence": [
@@ -347,6 +360,7 @@
       "title": "Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)",
       "severity": "high",
       "score": 66,
+      "change": null,
       "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
       "block": [],
       "evidence": [
@@ -368,6 +382,7 @@
       "title": "spid 112 holds a 12.0 GB memory grant and uses 1.0 GB",
       "severity": "high",
       "score": 66,
+      "change": null,
       "detail": "An over-sized grant starves other queries of workspace memory.",
       "block": [],
       "evidence": [
@@ -387,6 +402,7 @@
       "title": "tempdb file layout: 4 data file(s), sizes not even",
       "severity": "high",
       "score": 65,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -414,6 +430,7 @@
       "title": "Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP",
       "severity": "medium",
       "score": 60,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -439,6 +456,7 @@
       "title": "Availability group PayrollAG: failover to SQLDR02 is not ready",
       "severity": "medium",
       "score": 60,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -461,6 +479,7 @@
       "title": "Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower",
       "severity": "medium",
       "score": 58,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -488,6 +507,7 @@
       "title": "Wait: LCK_M_X",
       "severity": "medium",
       "score": 56,
+      "change": null,
       "detail": "Sessions are blocked waiting for a lock held by someone else.",
       "block": [],
       "evidence": [
@@ -514,6 +534,7 @@
       "title": "Blocking: spid 93 is blocking 1 session(s)",
       "severity": "medium",
       "score": 49,
+      "change": null,
       "detail": "Longest wait 6s.",
       "block": [
         "spid 93 [sleeping] CORP\\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker",
@@ -541,6 +562,7 @@
       "title": "2 enabled job(s) have missed their schedule",
       "severity": "medium",
       "score": 46,
+      "change": null,
       "detail": "Their next run time is more than 45 minutes in the past.",
       "block": [],
       "evidence": [
@@ -563,6 +585,7 @@
       "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
       "severity": "medium",
       "score": 45,
+      "change": null,
       "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
       "block": [],
       "evidence": [
@@ -584,6 +607,7 @@
       "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
       "severity": "medium",
       "score": 44,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -607,6 +631,7 @@
       "title": "Query Store in ReportsDB is not healthy",
       "severity": "medium",
       "score": 40,
+      "change": null,
       "detail": "While Query Store is not collecting, the regression figures for this database go stale.",
       "block": [],
       "evidence": [
@@ -626,6 +651,7 @@
       "title": "Log backups: PayrollDB last one was 1h10m ago",
       "severity": "medium",
       "score": 40,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -647,6 +673,7 @@
       "title": "Agent job running long: Purge Old Audit Rows (2h00m)",
       "severity": "medium",
       "score": 40,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -666,6 +693,7 @@
       "title": "Wait: PAGELATCH_UP",
       "severity": "low",
       "score": 35,
+      "change": null,
       "detail": "Contention on a data page that is already in memory.",
       "block": [],
       "evidence": [
@@ -692,6 +720,7 @@
       "title": "Agent job failed: Nightly ETL Load (1x in 24h)",
       "severity": "low",
       "score": 35,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -714,6 +743,7 @@
       "title": "Wait: WRITELOG",
       "severity": "low",
       "score": 33,
+      "change": null,
       "detail": "Sessions are waiting for commit log blocks to be hardened to disk.",
       "block": [],
       "evidence": [
@@ -739,6 +769,7 @@
       "title": "Wait: LCK_M_S",
       "severity": "low",
       "score": 31,
+      "change": null,
       "detail": "Sessions are blocked waiting for a lock held by someone else.",
       "block": [],
       "evidence": [
@@ -765,6 +796,7 @@
       "title": "max server memory is not set on a 64 GB host",
       "severity": "low",
       "score": 30,
+      "change": null,
       "detail": "SQL Server will grow until the OS has to push back, which is a bad time to find out.",
       "block": [],
       "evidence": [
@@ -783,6 +815,7 @@
       "title": "Wait: HADR_SYNC_COMMIT",
       "severity": "low",
       "score": 28,
+      "change": null,
       "detail": "Commits on the primary wait for a synchronous secondary to harden the log.",
       "block": [],
       "evidence": [
@@ -809,6 +842,7 @@
       "title": "Page life expectancy is 180 seconds",
       "severity": "low",
       "score": 25,
+      "change": null,
       "detail": "Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.",
       "block": [],
       "evidence": [
@@ -826,6 +860,7 @@
       "title": "Log: Staging has 640 VLFs",
       "severity": "low",
       "score": 20,
+      "change": null,
       "detail": "",
       "block": [],
       "evidence": [
@@ -842,6 +877,7 @@
       }
     }
   ],
+  "baseline": null,
   "hidden": 0,
   "errors": []
 }

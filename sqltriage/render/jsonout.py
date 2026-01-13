@@ -19,6 +19,7 @@ def to_dict(report):
                 "title": f.title,
                 "severity": severity_for(f.score),
                 "score": f.score,
+                "change": f.change or None,
                 "detail": f.detail,
                 "block": f.block,
                 "evidence": f.evidence,
@@ -27,6 +28,7 @@ def to_dict(report):
             }
             for f in report.findings
         ],
+        "baseline": report.baseline_counts,
         "hidden": report.hidden,
         "errors": report.errors,
     }

@@ -29,6 +29,8 @@ class Finding:
     data: Dict = field(default_factory=dict)
     # preformatted lines (a tree, say) that a renderer must not reflow or bullet
     block: List[str] = field(default_factory=list)
+    # against a baseline report: "new", "worse", "better" or "same"; empty without one
+    change: str = ""
 
     @property
     def severity(self):

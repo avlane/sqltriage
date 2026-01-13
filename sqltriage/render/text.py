@@ -1,6 +1,6 @@
 """Plain text report."""
 from .. import instance
-from .common import fmt_time
+from .common import describe_changes, fmt_time
 
 
 def to_text(report):
@@ -9,11 +9,14 @@ def to_text(report):
     ]
     if instance.summary(report.instance):
         lines.append(instance.summary(report.instance))
+    if report.baseline_counts is not None:
+        lines.append("against the baseline: " + describe_changes(report.baseline_counts))
     lines.append("")
     if not report.findings:
         lines.append("Nothing to report.")
     for number, f in enumerate(report.findings, 1):
-        lines.append("{:>2}. [{} {}] {}".format(number, f.severity.upper(), f.score, f.title))
+        tag = " {}".format(f.change.upper()) if f.change in ("new", "worse", "better") else ""
+        lines.append("{:>2}. [{} {}{}] {}".format(number, f.severity.upper(), f.score, tag, f.title))
         if f.detail:
             lines.append("    " + f.detail)
         for item in f.block:
