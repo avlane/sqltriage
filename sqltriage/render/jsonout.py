@@ -29,6 +29,7 @@ def to_dict(report):
             for f in report.findings
         ],
         "baseline": report.baseline_counts,
+        "resolved": report.resolved,
         "hidden": report.hidden,
         "errors": report.errors,
     }

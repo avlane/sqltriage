@@ -55,12 +55,29 @@ class ApplyTests(unittest.TestCase):
             Finding("vlf", "Log: Ops", 30, data={"database": "Ops"}),
             Finding("vlf", "Log: New", 30, data={"database": "New"}),
         ]
-        previous = {"vlf|Log: Sales|Sales": 50, "vlf|Log: Hr|Hr": 50, "vlf|Log: Ops|Ops": 60}
-        counts = baseline.apply(findings, previous)
+        previous = {
+            "vlf|Log: Sales|Sales": {"check": "vlf", "title": "Log: Sales", "score": 50},
+            "vlf|Log: Hr|Hr": {"check": "vlf", "title": "Log: Hr", "score": 50},
+            "vlf|Log: Ops|Ops": {"check": "vlf", "title": "Log: Ops", "score": 60},
+        }
+        counts, resolved = baseline.apply(findings, previous)
+        self.assertEqual(resolved, [])
         self.assertEqual([f.change for f in findings], ["worse", "same", "better", "new"])
         self.assertEqual(counts, {"new": 1, "worse": 1, "better": 1, "same": 1})
         self.assertIn("score was 50 in the baseline, now 80", findings[0].evidence)
         self.assertEqual(findings[1].evidence, [])
+
+
+class ResolvedTests(unittest.TestCase):
+    def test_findings_that_went_away(self):
+        previous = {
+            "a|Gone low": {"check": "a", "title": "Gone low", "score": 30},
+            "a|Gone high": {"check": "a", "title": "Gone high", "score": 80},
+            "a|Still here": {"check": "a", "title": "Still here", "score": 50},
+        }
+        counts, resolved = baseline.apply([Finding("a", "Still here", 50)], previous)
+        self.assertEqual([r["title"] for r in resolved], ["Gone high", "Gone low"])
+        self.assertEqual(counts["same"], 1)
 
 
 class LoadTests(unittest.TestCase):
@@ -76,12 +93,15 @@ class LoadTests(unittest.TestCase):
 
     def test_load(self):
         report = {"schema_version": 1, "findings": [{"check": "vlf", "title": "Log: Sales", "score": 70, "data": {"database": "Sales"}}]}
-        self.assertEqual(baseline.load(self.write(json.dumps(report))), {"vlf|Log: Sales|Sales": 70})
+        self.assertEqual(
+            baseline.load(self.write(json.dumps(report))),
+            {"vlf|Log: Sales|Sales": {"check": "vlf", "title": "Log: Sales", "score": 70}},
+        )
 
     def test_duplicate_keys_keep_the_higher_score(self):
         finding = {"check": "vlf", "title": "Log: Sales", "data": {"database": "Sales"}}
         report = {"schema_version": 1, "findings": [dict(finding, score=30), dict(finding, score=70), dict(finding, score=50)]}
-        self.assertEqual(baseline.load(self.write(json.dumps(report))), {"vlf|Log: Sales|Sales": 70})
+        self.assertEqual(baseline.load(self.write(json.dumps(report)))["vlf|Log: Sales|Sales"]["score"], 70)
 
     def test_errors(self):
         for text in ("not json", "[]", json.dumps({"findings": []})):

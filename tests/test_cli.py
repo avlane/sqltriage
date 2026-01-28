@@ -226,6 +226,38 @@ class CliTests(unittest.TestCase):
             self.assertIn("Against the baseline: 1 new,", text)
             self.assertRegex(text, r"\*\*1\. .*\(critical, 9\d, new\)")
 
+    def test_resolved_findings_are_listed(self):
+        import tempfile
+
+        def edit(data):
+            data["findings"].append({"check": "agent", "title": "Agent job failed: Old Job (2x in 24h)", "score": 77,
+                                     "data": {"job": "Old Job"}})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.save_json(tmp, edit=edit)
+            _, text = self.run_cli("-n", "50", "--baseline", path)
+            self.assertIn("Resolved since the baseline:\n  - [77] Agent job failed: Old Job (2x in 24h)", text)
+            _, as_json = self.run_cli("-n", "50", "-f", "json", "--baseline", path)
+            self.assertEqual(json.loads(as_json)["resolved"][0]["title"], "Agent job failed: Old Job (2x in 24h)")
+            _, md = self.run_cli("-n", "50", "-f", "markdown", "--baseline", path)
+            self.assertIn("**Resolved since the baseline**\n\n- Agent job failed: Old Job (2x in 24h) (77)", md)
+
+    def test_only_changes(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.save_json(tmp, edit=lambda d: d["findings"].pop(0))
+            _, text = self.run_cli("-n", "50", "--baseline", path, "--only-changes")
+            self.assertEqual(text.count(" NEW]"), 1)
+            self.assertNotIn("Wait: LCK_M_X", text)
+            self.assertRegex(text, r"\(\d+ lower ranked finding\(s\) hidden\)")
+
+    def test_only_changes_needs_a_baseline(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, _ = self.run_cli("--only-changes")
+        self.assertEqual(code, 2)
+        self.assertIn("--only-changes needs --baseline", err.getvalue())
+
     def test_bad_baseline_is_a_usage_error(self):
         with contextlib.redirect_stderr(io.StringIO()) as err:
             code, _ = self.run_cli("--baseline", "/nonexistent/before.json")

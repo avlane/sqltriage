@@ -11,6 +11,7 @@ class Report:
     def __init__(self, server, findings, errors, generated_at, instance=None):
         self.hidden = 0  # findings dropped by filter()
         self.baseline_counts = None  # {"new": n, "worse": n, ...} when compared with a baseline
+        self.resolved = []  # baseline findings that are gone, as {"check", "title", "score"}
         self.instance = instance
         self.server = server
         self.findings = findings
@@ -25,6 +26,17 @@ def filter_report(report, minimum):
     result = Report(report.server, kept, report.errors, report.generated_at, report.instance)
     result.hidden = len(report.findings) - len(kept)
     result.baseline_counts = report.baseline_counts
+    result.resolved = report.resolved
+    return result
+
+
+def only_changes(report):
+    """Keep what is new, worse or better since the baseline; drop the unchanged."""
+    kept = [f for f in report.findings if f.change != "same"]
+    result = Report(report.server, kept, report.errors, report.generated_at, report.instance)
+    result.hidden = report.hidden + len(report.findings) - len(kept)
+    result.baseline_counts = report.baseline_counts
+    result.resolved = report.resolved
     return result
 
 

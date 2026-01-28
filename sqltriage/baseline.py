@@ -46,7 +46,7 @@ def key_of(finding):
 
 
 def load(path):
-    """The findings of a saved JSON report as {key: score}."""
+    """The findings of a saved JSON report as {key: {"check", "title", "score"}}."""
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
@@ -56,11 +56,12 @@ def load(path):
         raise BaselineError("baseline {} is not valid JSON: {}".format(path, exc)) from exc
     if not isinstance(data, dict) or "findings" not in data or "schema_version" not in data:
         raise BaselineError("baseline {} is not a sqltriage JSON report".format(path))
-    scores = {}
+    found = {}
     for f in data["findings"]:
         key = finding_key(f["check"], f["title"], f.get("data") or {})
-        scores[key] = max(f["score"], scores.get(key, 0))
-    return scores
+        if key not in found or f["score"] > found[key]["score"]:
+            found[key] = {"check": f["check"], "title": f["title"], "score": f["score"]}
+    return found
 
 
 def classify(score, before):
@@ -74,12 +75,21 @@ def classify(score, before):
 
 
 def apply(findings, previous):
-    """Set ``finding.change`` on each finding; return a count of each kind."""
+    """Set ``finding.change`` on each finding.
+
+    Returns ``(counts, resolved)``: a count of each kind of change, and the
+    baseline findings that no longer appear, highest score first.
+    """
     counts = {"new": 0, "worse": 0, "better": 0, "same": 0}
+    seen = set()
     for finding in findings:
-        before = previous.get(key_of(finding))
+        key = key_of(finding)
+        seen.add(key)
+        before = previous[key]["score"] if key in previous else None
         finding.change = classify(finding.score, before)
         if finding.change in ("worse", "better"):
             finding.evidence.append("score was {} in the baseline, now {}".format(before, finding.score))
         counts[finding.change] += 1
-    return counts
+    resolved = [previous[k] for k in previous if k not in seen]
+    resolved.sort(key=lambda r: (-r["score"], r["title"]))
+    return counts, resolved

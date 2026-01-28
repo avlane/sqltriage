@@ -50,6 +50,11 @@ def to_markdown(report):
     if report.hidden:
         lines.append("")
         lines.append("_{} lower ranked finding(s) hidden._".format(report.hidden))
+    if report.resolved:
+        lines.append("")
+        lines.append("**Resolved since the baseline**")
+        lines.append("")
+        lines.extend("- {} ({})".format(r["title"], r["score"]) for r in report.resolved)
     if report.errors:
         lines.append("")
         lines.append("**Checks that failed**")

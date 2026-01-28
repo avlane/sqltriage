@@ -11,7 +11,7 @@ from .context import Context, ManualClock
 from .render import FORMATS
 from .models import LEVELS, severity_rank
 from .redact import redact_findings
-from .report import build_report, filter_report
+from .report import build_report, filter_report, only_changes
 from .source import FixtureSource, MssqlPythonSource, PyodbcSource, RecordingSource
 
 
@@ -53,6 +53,7 @@ def build_parser():
                         help="mask string and number literals, hex values and e-mail addresses in the report")
     parser.add_argument("--redact-names", action="store_true", help="replace logins and host names with tokens (implies --redact)")
     parser.add_argument("--baseline", metavar="FILE", help="compare with an earlier JSON report (see -f json -o)")
+    parser.add_argument("--only-changes", action="store_true", help="with --baseline, show only what is new, worse or better")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
 
@@ -152,6 +153,9 @@ def main(argv=None, out=None):
         options["weights"] = weights
     if args.blocking_min_wait is not None:
         options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
+    if args.only_changes and not args.baseline:
+        sys.stderr.write("--only-changes needs --baseline\n")
+        return 2
     previous = None
     if args.baseline:
         try:
@@ -176,7 +180,9 @@ def main(argv=None, out=None):
     finally:
         source.close()
     if previous is not None:
-        report.baseline_counts = baseline.apply(report.findings, previous)
+        report.baseline_counts, report.resolved = baseline.apply(report.findings, previous)
+        if args.only_changes:
+            report = only_changes(report)
     if args.redact or args.redact_names:
         redact_findings(report.findings, names=args.redact_names)
     failing = args.fail_on is not None and any(f.severity_rank >= severity_rank(args.fail_on) for f in report.findings)

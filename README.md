@@ -125,10 +125,10 @@ Save a report as JSON on a quiet day, or just before a change:
 
     python -m sqltriage -S SQLPROD01 -f json -o before.json
 
-Later, `--baseline before.json` marks each finding NEW, WORSE (10 or more points
+Later, `--baseline before.json` lists what has been resolved since and marks each finding NEW, WORSE (10 or more points
 up), BETTER or unchanged, and the header counts them. Findings are matched by
 what they are about (the session, wait type, database, query or job), not by
-their numbers.
+their numbers. `--only-changes` hides the unchanged ones.
 
 ## Sharing a report
 

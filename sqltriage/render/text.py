@@ -28,6 +28,10 @@ def to_text(report):
     if report.hidden:
         lines.append("")
         lines.append("({} lower ranked finding(s) hidden)".format(report.hidden))
+    if report.resolved:
+        lines.append("")
+        lines.append("Resolved since the baseline:")
+        lines.extend("  - [{}] {}".format(r["score"], r["title"]) for r in report.resolved)
     if report.errors:
         lines.append("")
         lines.append("Checks that failed:")
