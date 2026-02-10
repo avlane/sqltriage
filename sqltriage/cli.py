@@ -4,7 +4,7 @@ import os
 import sys
 
 from . import __version__
-from . import baseline, config, preflight
+from . import baseline, config, history, preflight
 from .checks import CHECKS
 from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
@@ -53,6 +53,8 @@ def build_parser():
                         help="mask string and number literals, hex values and e-mail addresses in the report")
     parser.add_argument("--redact-names", action="store_true", help="replace logins and host names with tokens (implies --redact)")
     parser.add_argument("--baseline", metavar="FILE", help="compare with an earlier JSON report (see -f json -o)")
+    parser.add_argument("--baseline-dir", metavar="DIR", help="compare with the newest report saved in DIR for this server")
+    parser.add_argument("--save", metavar="DIR", help="also save this report as JSON in DIR (for --baseline-dir)")
     parser.add_argument("--only-changes", action="store_true", help="with --baseline, show only what is new, worse or better")
     parser.add_argument("--only", help="comma separated checks to run: " + ",".join(CHECKS))
     return parser
@@ -153,13 +155,16 @@ def main(argv=None, out=None):
         options["weights"] = weights
     if args.blocking_min_wait is not None:
         options["blocking_min_wait_ms"] = int(args.blocking_min_wait * 1000)
-    if args.only_changes and not args.baseline:
-        sys.stderr.write("--only-changes needs --baseline\n")
+    baseline_path = args.baseline
+    if args.baseline_dir and not baseline_path:
+        baseline_path = history.latest(args.baseline_dir, args.server)
+    if args.only_changes and not (args.baseline or args.baseline_dir):
+        sys.stderr.write("--only-changes needs --baseline or --baseline-dir\n")
         return 2
     previous = None
-    if args.baseline:
+    if baseline_path:
         try:
-            previous = baseline.load(args.baseline)
+            previous = baseline.load(baseline_path)
         except baseline.BaselineError as exc:
             source.close()
             sys.stderr.write("{}\n".format(exc))
@@ -179,6 +184,9 @@ def main(argv=None, out=None):
         report = build_report(ctx, args.server, names)
     finally:
         source.close()
+    if args.save:
+        saved = history.save(args.save, args.server, report.generated_at, FORMATS["json"](report))
+        sys.stderr.write("saved {}\n".format(saved))
     if previous is not None:
         report.baseline_counts, report.resolved = baseline.apply(report.findings, previous)
         if args.only_changes:

@@ -258,6 +258,38 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("--only-changes needs --baseline", err.getvalue())
 
+    def test_save_then_compare_with_the_saved_report(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = os.path.join(tmp, "history")
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                _, first = self.run_cli("-n", "50", "-S", "SQLPROD01", "--save", directory, "--baseline-dir", directory)
+            self.assertNotIn("against the baseline", first)  # nothing saved yet
+            self.assertRegex(err.getvalue(), r"saved .*sqltriage-SQLPROD01-\d{8}-\d{6}\.json")
+            self.assertEqual(len(os.listdir(directory)), 1)
+            _, second = self.run_cli("-n", "50", "-S", "SQLPROD01", "--baseline-dir", directory)
+            self.assertRegex(second, r"against the baseline: \d+ unchanged\n")
+
+    def test_baseline_dir_for_another_server_is_not_used(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.run_cli("-S", "SQLPROD01", "--save", tmp)
+            _, text = self.run_cli("-S", "SQLPROD02", "--baseline-dir", tmp)
+            self.assertNotIn("against the baseline", text)
+
+    def test_explicit_baseline_wins_over_the_directory(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.run_cli("-S", "SQLPROD01", "--save", tmp)
+            path = self.save_json(tmp, "mine.json", edit=lambda d: d["findings"].pop(0))
+            _, text = self.run_cli("-n", "50", "-S", "SQLPROD01", "--baseline", path, "--baseline-dir", tmp)
+            self.assertIn("1 new", text)
+
     def test_bad_baseline_is_a_usage_error(self):
         with contextlib.redirect_stderr(io.StringIO()) as err:
             code, _ = self.run_cli("--baseline", "/nonexistent/before.json")

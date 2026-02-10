@@ -130,6 +130,10 @@ up), BETTER or unchanged, and the header counts them. Findings are matched by
 what they are about (the session, wait type, database, query or job), not by
 their numbers. `--only-changes` hides the unchanged ones.
 
+To keep a history, run with `--save reports --baseline-dir reports`: each run is
+saved as `reports/sqltriage-<server>-<timestamp>.json` and compared with the
+newest earlier one for the same server. The saved files are not redacted.
+
 ## Sharing a report
 
 `--redact` masks string literals, long numbers, hex values and e-mail addresses
