@@ -1,6 +1,6 @@
 """Plain text report."""
 from .. import instance
-from .common import describe_changes, fmt_time
+from .common import describe_changes, fmt_time, summary_line
 
 
 def to_text(report):
@@ -9,6 +9,8 @@ def to_text(report):
     ]
     if instance.summary(report.instance):
         lines.append(instance.summary(report.instance))
+    if report.findings:
+        lines.append("{} finding(s): {}".format(len(report.findings), summary_line(report.findings)))
     if report.baseline_counts is not None:
         lines.append("against the baseline: " + describe_changes(report.baseline_counts))
     lines.append("")

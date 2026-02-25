@@ -1,6 +1,6 @@
 """Markdown report, for pasting into a ticket."""
 from .. import instance
-from .common import describe_changes, fmt_time
+from .common import describe_changes, fmt_time, summary_line
 
 
 def table_cell(text):
@@ -10,18 +10,16 @@ def table_cell(text):
 
 def to_markdown(report):
     """Markdown that pastes cleanly into a ticket comment."""
-    lines = [
-        "### sqltriage report for {}".format(report.server),
-        "",
-        "_Generated {}_".format(fmt_time(report.generated_at)),
-        "",
-    ]
+    paragraphs = ["_Generated {}_".format(fmt_time(report.generated_at))]
     if instance.summary(report.instance):
-        lines.insert(3, "{}".format(instance.summary(report.instance)))
-        lines.insert(4, "")
+        paragraphs.append(instance.summary(report.instance))
+    if report.findings:
+        paragraphs.append("**{} finding(s):** {}".format(len(report.findings), summary_line(report.findings)))
     if report.baseline_counts is not None:
-        lines.insert(len(lines) - 1, "Against the baseline: " + describe_changes(report.baseline_counts))
-        lines.insert(len(lines) - 1, "")
+        paragraphs.append("Against the baseline: " + describe_changes(report.baseline_counts))
+    lines = ["### sqltriage report for {}".format(report.server), ""]
+    for paragraph in paragraphs:
+        lines.extend([paragraph, ""])
     if not report.findings:
         lines.append("Nothing to report.")
     else:

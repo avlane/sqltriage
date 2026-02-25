@@ -26,6 +26,10 @@ def sample_report(errors=None):
 
 
 class TextTests(unittest.TestCase):
+    def test_summary_line(self):
+        text = to_text(sample_report())
+        self.assertIn("2 finding(s): 1 high, 1 medium\n", text)
+
     def test_layout(self):
         text = to_text(sample_report())
         self.assertIn("sqltriage report for SQLPROD01 at 2023-04-12 20:00:00", text)
@@ -60,10 +64,15 @@ class JsonTests(unittest.TestCase):
         self.assertEqual(data["server"], "SQLPROD01")
         self.assertEqual(data["findings"][0]["severity"], "high")
         self.assertEqual(data["findings"][1]["severity"], "medium")
+        self.assertEqual(data["summary"], {"critical": 0, "high": 1, "medium": 1, "low": 0, "info": 0})
         self.assertEqual(to_dict(sample_report())["errors"], [])
 
 
 class MarkdownTests(unittest.TestCase):
+    def test_header_paragraphs(self):
+        md = to_markdown(sample_report())
+        self.assertTrue(md.startswith("### sqltriage report for SQLPROD01\n\n_Generated 2023-04-12 20:00:00_\n\n**2 finding(s):** 1 high, 1 medium\n\n| # |"))
+
     def test_summary_table_and_details(self):
         md = to_markdown(sample_report())
         self.assertIn("### sqltriage report for SQLPROD01", md)

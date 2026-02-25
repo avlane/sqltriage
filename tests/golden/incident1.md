@@ -1,8 +1,10 @@
 ### sqltriage report for SQLPROD01
 
 _Generated 2023-03-14 10:00:00_
+
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
 
+**35 finding(s):** 2 critical, 14 high, 11 medium, 8 low
 
 | # | Severity | Score | Finding |
 |---|----------|-------|---------|

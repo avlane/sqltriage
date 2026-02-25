@@ -13,6 +13,13 @@
     "product_name": "SQL Server 2019"
   },
   "generated_at": "2023-03-14 10:00:00",
+  "summary": {
+    "critical": 2,
+    "high": 14,
+    "medium": 11,
+    "low": 8,
+    "info": 0
+  },
   "findings": [
     {
       "check": "blocking",

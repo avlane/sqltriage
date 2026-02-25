@@ -3,7 +3,7 @@ import json
 
 from .. import SCHEMA_VERSION, __version__
 from ..models import severity_for
-from .common import fmt_time
+from .common import fmt_time, severity_counts
 
 
 def to_dict(report):
@@ -13,6 +13,7 @@ def to_dict(report):
         "server": report.server,
         "instance": report.instance,
         "generated_at": fmt_time(report.generated_at),
+        "summary": severity_counts(report.findings),
         "findings": [
             {
                 "check": f.check,
