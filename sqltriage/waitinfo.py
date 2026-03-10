@@ -207,6 +207,66 @@ WAIT_INFO = {
         "Log transport to a secondary is held up by flow control.",
         ["Check network throughput and the secondary's ability to receive."],
     ),
+    "LOGMGR_RESERVE_APPEND": Info(
+        "log",
+        40,
+        "A write is waiting for log space to be reclaimed before it can append.",
+        [
+            "The log is close to full: see the log section for the reuse wait.",
+            "Do not shrink the log; find what is stopping truncation.",
+        ],
+    ),
+    "HADR_DATABASE_FLOW_CONTROL": Info(
+        "ag",
+        30,
+        "Log is being sent to a secondary faster than it can take it, so the sender is held back.",
+        ["Check the secondary's receive and redo rates, and the network, in the availability group section."],
+    ),
+    "PREEMPTIVE_HADR_LEASE_MECHANISM": Info(
+        "ag",
+        35,
+        "Waiting on the cluster lease; long waits here are what cause lease timeouts and unexpected failovers.",
+        ["Check the cluster and the host for CPU or memory starvation, and the cluster health logs."],
+    ),
+    "PREEMPTIVE_OS_AUTHENTICATIONOPS": Info(
+        "client",
+        25,
+        "Logins are slow to authenticate against the domain.",
+        ["Check domain controller response time and DNS from the SQL Server host."],
+    ),
+    "WAIT_ON_SYNC_STATISTICS_REFRESH": Info(
+        "statistics",
+        25,
+        "Queries are waiting for an automatic statistics update to finish before compiling.",
+        [
+            "Consider AUTO_UPDATE_STATISTICS_ASYNC on, or update the big tables' statistics out of hours.",
+            "Check how often auto update fires on the largest tables.",
+        ],
+    ),
+    "ACCESS_METHODS_DATASET_PARENT": Info(
+        "parallelism",
+        10,
+        "Parallel scan threads coordinating where to read next.",
+        ["Usually appears alongside CXPACKET; look at the parallel scans on large tables."],
+    ),
+    "SOS_PHYS_PAGE_CACHE": Info(
+        "memory",
+        15,
+        "Contention allocating physical memory pages, seen with very large memory grants or on startup.",
+        ["Check for sudden growth in memory use; see the memory section."],
+    ),
+    "BACKUPBUFFER": Info(
+        "io",
+        10,
+        "A backup is waiting for a buffer, so its target is slower than the source.",
+        ["Check the backup target's write speed."],
+    ),
+    "REPLICA_WRITES": Info(
+        "io",
+        10,
+        "Writes to a database snapshot or secondary copy-on-write are waiting.",
+        ["Check for database snapshots on a busy database."],
+    ),
     "CMEMTHREAD": Info(
         "memory",
         20,
@@ -251,6 +311,24 @@ PREFIX_INFO = [
                 "In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.",
                 "In a user database look for last-page insert hot spots.",
             ],
+        ),
+    ),
+    (
+        "DTC",
+        Info(
+            "client",
+            15,
+            "A distributed transaction (MSDTC) is involved.",
+            ["Check MSDTC health and which application is enlisting in distributed transactions."],
+        ),
+    ),
+    (
+        "PREEMPTIVE_",
+        Info(
+            "preemptive",
+            10,
+            "A call out to the operating system or external code; the rest of the name says which.",
+            ["Look the full wait name up; the slow call is usually storage, a linked server, or authentication."],
         ),
     ),
     (

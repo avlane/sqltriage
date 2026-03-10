@@ -210,6 +210,38 @@ class ExplainTests(unittest.TestCase):
         ]:
             self.assertEqual(waitinfo.explain(name).category, category, name)
 
+    def test_more_waits_explained(self):
+        from sqltriage import waitinfo
+
+        for name, category in [
+            ("LOGMGR_RESERVE_APPEND", "log"),
+            ("HADR_DATABASE_FLOW_CONTROL", "ag"),
+            ("PREEMPTIVE_HADR_LEASE_MECHANISM", "ag"),
+            ("PREEMPTIVE_OS_AUTHENTICATIONOPS", "client"),
+            ("WAIT_ON_SYNC_STATISTICS_REFRESH", "statistics"),
+            ("ACCESS_METHODS_DATASET_PARENT", "parallelism"),
+            ("DTC_STATE", "client"),
+            ("PREEMPTIVE_OS_CRYPTOPS", "preemptive"),
+        ]:
+            self.assertEqual(waitinfo.explain(name).category, category, name)
+
+    def test_specific_entries_beat_the_prefixes(self):
+        from sqltriage import waitinfo
+
+        self.assertEqual(waitinfo.explain("PREEMPTIVE_OS_WRITEFILEGATHER").category, "io")
+        self.assertEqual(waitinfo.explain("HADR_SYNC_COMMIT").category, "ag")
+        self.assertEqual(waitinfo.explain("HADR_DATABASE_FLOW_CONTROL").weight, 30)
+
+    def test_every_explanation_is_complete(self):
+        from sqltriage import waitinfo
+
+        entries = list(waitinfo.WAIT_INFO.items()) + [(p, i) for p, i in waitinfo.PREFIX_INFO]
+        for name, info in entries:
+            self.assertTrue(info.text.endswith("."), name)
+            self.assertTrue(info.advice, name)
+            self.assertTrue(0 <= info.weight <= 50, name)
+            self.assertFalse(waitinfo.is_benign(name), name)
+
     def test_background_families_are_idle(self):
         from sqltriage import waitinfo
 
