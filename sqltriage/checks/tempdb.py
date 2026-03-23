@@ -197,6 +197,25 @@ def run(ctx):
     return findings + contention_findings(ctx)
 
 
+METADATA_MIN_MAJOR = 15  # memory-optimized tempdb metadata arrived with SQL Server 2019
+
+
+def metadata_advice(ctx, descriptions):
+    """Suggest memory-optimized tempdb metadata when system table pages are the hot ones.
+
+    Only on 2019 and later, and not if it is already on.
+    """
+    info = ctx.instance_info() or {}
+    if (info.get("major_version") or 0) < METADATA_MIN_MAJOR or info.get("tempdb_metadata_memory_optimized"):
+        return None
+    if not any("system table" in text for text in descriptions):
+        return None
+    return (
+        "System table pages are the hot ones: memory-optimized tempdb metadata "
+        "(ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON, needs a restart) removes that contention."
+    )
+
+
 def describe_page(row):
     """'DATA_PAGE of system table object_id 34' and the like."""
     object_id = row.get("object_id")
@@ -259,6 +278,9 @@ def contention_findings(ctx):
         title = "tempdb page latch waits on {} task(s), none on allocation pages".format(other_tasks)
         detail = "Latch waits on other tempdb pages, which are usually system table (metadata) pages."
         advice = ["Latches on tempdb's own system tables mean heavy temp object churn; see which statements create and drop the most."]
+    metadata_tip = metadata_advice(ctx, described.values())
+    if metadata_tip:
+        advice.append(metadata_tip)
     return [
         Finding(
             check=NAME,

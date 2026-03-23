@@ -7,6 +7,7 @@ SELECT @@SERVERNAME AS server_name,
        CAST(SERVERPROPERTY('ProductMajorVersion') AS int) AS major_version,
        CAST(SERVERPROPERTY('Edition') AS nvarchar(128)) AS edition,
        CAST(SERVERPROPERTY('IsHadrEnabled') AS int) AS is_hadr_enabled,
+       CAST(SERVERPROPERTY('IsTempdbMetadataMemoryOptimized') AS int) AS tempdb_metadata_memory_optimized,
        si.sqlserver_start_time,
        si.cpu_count
 FROM sys.dm_os_sys_info AS si;"""

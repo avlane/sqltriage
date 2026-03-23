@@ -10,6 +10,7 @@
     "is_hadr_enabled": 1,
     "sqlserver_start_time": "2023-03-02T03:12:44",
     "cpu_count": 16,
+    "tempdb_metadata_memory_optimized": 0,
     "product_name": "SQL Server 2019"
   },
   "generated_at": "2023-03-14 10:00:00",
@@ -107,7 +108,8 @@
       ],
       "advice": [
         "Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).",
-        "Look for code that creates and drops temp tables at a very high rate, or large table variables."
+        "Look for code that creates and drops temp tables at a very high rate, or large table variables.",
+        "System table pages are the hot ones: memory-optimized tempdb metadata (ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON, needs a restart) removes that contention."
       ],
       "data": {
         "allocation_tasks": 15,

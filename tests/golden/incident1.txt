@@ -42,6 +42,7 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - also shows up as: PAGELATCH_UP
       > Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).
       > Look for code that creates and drops temp tables at a very high rate, or large table variables.
+      > System table pages are the hot ones: memory-optimized tempdb metadata (ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON, needs a restart) removes that contention.
  4. [HIGH 80] Availability group PayrollAG: failover to SQLPROD02 is not ready
       - not failover ready: ReportsDB
       - automatic failover to this replica would NOT happen

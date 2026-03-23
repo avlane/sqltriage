@@ -6,6 +6,7 @@
     "edition": "Enterprise Edition (64-bit)",
     "is_hadr_enabled": 1,
     "sqlserver_start_time": "2023-03-02T03:12:44",
-    "cpu_count": 16
+    "cpu_count": 16,
+    "tempdb_metadata_memory_optimized": 0
   }
 ]

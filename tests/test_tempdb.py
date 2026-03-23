@@ -92,6 +92,48 @@ class PageInfoTests(unittest.TestCase):
         self.assertTrue(any(e.startswith("other 2:1:1234  1 task(s) waiting, longest 4 ms") and " - " not in e for e in finding.evidence))
 
 
+class MetadataAdviceTests(unittest.TestCase):
+    SYSTEM = ["DATA_PAGE of system table object_id 34"]
+
+    def ctx(self, major=15, enabled=0):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                rows = super().fetch(name, sql, params, database)
+                if name == "instance_info":
+                    rows[0].update(major_version=major, tempdb_metadata_memory_optimized=enabled)
+                return rows
+
+        return Context(Fake(FIXTURES))
+
+    def test_advised_on_2019_when_system_tables_are_hot(self):
+        self.assertIn("MEMORY_OPTIMIZED TEMPDB_METADATA = ON", tempdb.metadata_advice(self.ctx(), self.SYSTEM))
+
+    def test_not_if_already_on(self):
+        self.assertIsNone(tempdb.metadata_advice(self.ctx(enabled=1), self.SYSTEM))
+
+    def test_not_before_2019(self):
+        self.assertIsNone(tempdb.metadata_advice(self.ctx(major=14, enabled=None), self.SYSTEM))
+
+    def test_not_for_ordinary_pages(self):
+        self.assertIsNone(tempdb.metadata_advice(self.ctx(), ["INDEX_PAGE of object_id 5000"]))
+        self.assertIsNone(tempdb.metadata_advice(self.ctx(), []))
+
+    def test_unknown_version(self):
+        class Silent(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "instance_info":
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        self.assertIsNone(tempdb.metadata_advice(Context(Silent(FIXTURES)), self.SYSTEM))
+
+    def test_only_metadata_contention_gets_it_in_the_finding(self):
+        # the incident is mostly allocation contention, with a single system table page
+        (finding,) = tempdb.contention_findings(self.ctx())
+        self.assertFalse(any("TEMPDB_METADATA" in a for a in finding.advice[:2]))
+        self.assertTrue(any("TEMPDB_METADATA" in a for a in finding.advice))
+
+
 class LayoutTests(unittest.TestCase):
     def test_good_layout(self):
         self.assertIsNone(tempdb.layout_finding(files([1024] * 8)))

@@ -100,6 +100,7 @@ Sessions are queueing on tempdb's allocation bitmaps while creating or dropping 
 Next steps:
 1. Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).
 1. Look for code that creates and drops temp tables at a very high rate, or large table variables.
+1. System table pages are the hot ones: memory-optimized tempdb metadata (ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON, needs a restart) removes that contention.
 
 **4. Availability group PayrollAG: failover to SQLPROD02 is not ready** (high, 80)
 
