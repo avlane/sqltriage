@@ -4,6 +4,7 @@ from collections import OrderedDict
 from ..fmt import span, to_datetime
 from ..models import Finding
 from ..scoring import step_score
+from ..source import SourceError
 
 NAME = "ag"
 
@@ -29,6 +30,17 @@ JOIN sys.dm_hadr_availability_replica_states AS ars
   ON ars.replica_id = ar.replica_id
  AND ars.group_id = ar.group_id
 ORDER BY ag.name, ars.role_desc, ar.replica_server_name;"""
+
+# Which groups are distributed or contained.  is_contained exists from SQL Server
+# 2022; before that the column is not there to select.
+GROUPS_SQL = """\
+SELECT ag.name AS ag_name,
+       ag.is_distributed,
+       {contained} AS is_contained
+FROM sys.availability_groups AS ag;"""
+CONTAINED_COLUMN = "ag.is_contained"
+NOT_CONTAINED = "CAST(0 AS bit)"
+CONTAINED_MIN_MAJOR = 16
 
 # Would a failover work right now?  is_failover_ready is only expected to be
 # true for synchronous replicas whose databases are synchronized.
@@ -290,5 +302,46 @@ def replica_findings(ctx):
     return findings
 
 
+def group_kinds(ctx):
+    """ag name -> ['distributed'], ['contained'], both or neither."""
+    major = ctx.server_major() or 0
+    sql = GROUPS_SQL.format(contained=CONTAINED_COLUMN if major >= CONTAINED_MIN_MAJOR else NOT_CONTAINED)
+    try:
+        rows = ctx.source.fetch("ag_groups", sql)
+    except SourceError:
+        return {}
+    kinds = {}
+    for row in rows:
+        found = []
+        if row.get("is_distributed"):
+            found.append("distributed")
+        if row.get("is_contained"):
+            found.append("contained")
+        kinds[row["ag_name"]] = found
+    return kinds
+
+
+KIND_NOTES = {
+    "distributed": "This is a distributed availability group: the forwarder replica of the second group receives from the first, so check both groups.",
+    "contained": "This is a contained availability group: its logins and Agent jobs live in the group's own master and msdb, reached through the listener.",
+}
+
+
+def label_kinds(findings, kinds):
+    """Say in the title and evidence when a finding is about a distributed or contained group."""
+    for finding in findings:
+        found = kinds.get(finding.data.get("ag"))
+        if not found:
+            continue
+        finding.title = finding.title.replace(
+            "Availability group {}".format(finding.data["ag"]),
+            "Availability group {} ({})".format(finding.data["ag"], ", ".join(found)),
+            1,
+        )
+        finding.evidence.extend(KIND_NOTES[kind] for kind in found)
+    return findings
+
+
 def run(ctx):
-    return replica_findings(ctx) + database_findings(ctx) + failover_findings(ctx)
+    findings = replica_findings(ctx) + database_findings(ctx) + failover_findings(ctx)
+    return label_kinds(findings, group_kinds(ctx)) if findings else findings

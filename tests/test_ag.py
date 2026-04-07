@@ -3,7 +3,8 @@ import unittest
 
 from sqltriage.checks import ag
 from sqltriage.context import Context
-from sqltriage.source import FixtureSource
+from sqltriage.models import Finding
+from sqltriage.source import FixtureSource, SourceError
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
@@ -111,6 +112,77 @@ class DatabaseProblemTests(unittest.TestCase):
     def test_lag(self):
         ((score, _),) = ag.database_problems(database(secondary_lag_seconds=700))
         self.assertEqual(score, 70)
+
+
+class KindTests(unittest.TestCase):
+    def serve(self, rows, major=16):
+        seen = {}
+
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "ag_groups":
+                    seen["sql"] = sql
+                    return rows
+                if name == "instance_info":
+                    result = super().fetch(name, sql, params, database)
+                    result[0]["major_version"] = major
+                    return result
+                return super().fetch(name, sql, params, database)
+
+        return Context(Fake(FIXTURES)), seen
+
+    def test_flags(self):
+        ctx, _ = self.serve([{"ag_name": "A", "is_distributed": 1, "is_contained": 0},
+                             {"ag_name": "B", "is_distributed": 0, "is_contained": 1},
+                             {"ag_name": "C", "is_distributed": 0, "is_contained": 0}])
+        self.assertEqual(ag.group_kinds(ctx), {"A": ["distributed"], "B": ["contained"], "C": []})
+
+    def test_contained_column_only_on_2022_and_later(self):
+        ctx, seen = self.serve([], major=16)
+        ag.group_kinds(ctx)
+        self.assertIn("ag.is_contained AS is_contained", seen["sql"])
+        ctx, seen = self.serve([], major=15)
+        ag.group_kinds(ctx)
+        self.assertIn("CAST(0 AS bit) AS is_contained", seen["sql"])
+        self.assertNotIn("ag.is_contained", seen["sql"])
+
+    def test_unknown_version_does_not_ask_for_the_new_column(self):
+        class Silent(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "instance_info":
+                    raise SourceError("denied")
+                if name == "ag_groups":
+                    self.assertNotIn("ag.is_contained", sql)
+                return []
+
+        ag.group_kinds(Context(Silent(FIXTURES)))
+
+    def test_labels(self):
+        findings = [
+            Finding("ag", "Availability group A: replica R is unhealthy", 70, data={"ag": "A"}),
+            Finding("ag", "Availability group B: replica R is unhealthy", 70, data={"ag": "B"}),
+            Finding("ag", "Availability group AB: x", 70, data={"ag": "AB"}),
+        ]
+        ag.label_kinds(findings, {"A": ["distributed"], "B": ["distributed", "contained"]})
+        self.assertEqual(findings[0].title, "Availability group A (distributed): replica R is unhealthy")
+        self.assertEqual(findings[1].title, "Availability group B (distributed, contained): replica R is unhealthy")
+        self.assertEqual(findings[2].title, "Availability group AB: x")
+        self.assertEqual(len(findings[1].evidence), 2)
+        self.assertIn("forwarder", findings[0].evidence[0])
+
+    def test_unreadable_groups_view(self):
+        class Denied(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "ag_groups":
+                    raise SourceError("denied")
+                return super().fetch(name, sql, params, database)
+
+        self.assertEqual(ag.group_kinds(Context(Denied(FIXTURES))), {})
+        self.assertTrue(ag.run(Context(Denied(FIXTURES))))  # the other findings still come through
+
+    def test_plain_group_is_not_relabelled(self):
+        findings = ag.run(Context(FixtureSource(FIXTURES)))
+        self.assertTrue(all("(" not in f.title.split(":")[0] for f in findings))
 
 
 class FailoverTests(unittest.TestCase):
