@@ -1,0 +1,20 @@
+[
+  {
+    "database_name": "PayrollDB",
+    "persistent_version_store_size_kb": 32505856,
+    "online_index_version_store_size_kb": 0,
+    "current_aborted_transaction_count": 0,
+    "oldest_active_transaction_id": 8812334421,
+    "oldest_aborted_transaction_id": 0,
+    "data_size_kb": 209715200
+  },
+  {
+    "database_name": "ReportsDB",
+    "persistent_version_store_size_kb": 51200,
+    "online_index_version_store_size_kb": 0,
+    "current_aborted_transaction_count": 0,
+    "oldest_active_transaction_id": 0,
+    "oldest_aborted_transaction_id": 0,
+    "data_size_kb": 83886080
+  }
+]

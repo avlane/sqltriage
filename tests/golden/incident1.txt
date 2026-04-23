@@ -1,6 +1,6 @@
 sqltriage report for SQLPROD01 at 2023-03-14 10:00:00
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
-35 finding(s): 2 critical, 14 high, 11 medium, 8 low
+36 finding(s): 2 critical, 14 high, 12 medium, 8 low
 
  1. [CRITICAL 95] Blocking: spid 57 is blocking 6 session(s)
     Longest wait 94s.
@@ -22,6 +22,7 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]
       - also shows up as: LCK_M_S, LCK_M_X
       - also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
+      - also shows up as: Persistent version store in PayrollDB is 31 GB
       > Find out why spid 57 is not finishing; KILL is the last resort.
  2. [CRITICAL 90] Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
       - 18,432 VLFs in 61,440 MB of log (17900 active)
@@ -191,11 +192,18 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - 41,200 MB of log since then, 67% of the 61,440 MB log
       - the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)
       > Check the log backup job (see the Agent section) and the backup target.
-27. [MEDIUM 40] Agent job running long: Purge Old Audit Rows (2h00m)
+27. [MEDIUM 40] Persistent version store in PayrollDB is 31 GB
+    Row versions are piling up in the database because old transactions keep them alive.
+      - persistent version store is 31.0 GB, 16% of the 200 GB of data files
+      - oldest active transaction id 8812334421 is holding back cleanup
+      - the oldest active transaction is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)
+      > Find and finish that transaction: see the blocking section for sessions with open transactions.
+      > Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up.
+28. [MEDIUM 40] Agent job running long: Purge Old Audit Rows (2h00m)
       - running for 2h00m and there is no run history to compare with
       - started 2023-03-14T08:00:00, now on step 1
       > Check what the job's session is waiting on before deciding to stop it.
-28. [LOW 35] Wait: PAGELATCH_UP
+29. [LOW 35] Wait: PAGELATCH_UP
     Contention on a data page that is already in memory.
       - 17% of non-idle wait time (38000 ms over 5200 waits, 7.3 ms average)
       - 3.8 tasks waiting on average during the sample
@@ -203,20 +211,20 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages
       > In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
       > In a user database look for last-page insert hot spots.
-29. [LOW 35] Agent job failed: Nightly ETL Load (1x in 24h)
+30. [LOW 35] Agent job failed: Nightly ETL Load (1x in 24h)
       - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
       - ran for 4540s before failing
       - failing step 3 (Load Fact Tables): error 1205, severity 13
       - Executed as user: CORP\svc_sql. Transaction (Process ID 88) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction. [SQLSTATE 40001] (Error 1205). The step failed.
       > The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
-30. [LOW 33] Wait: WRITELOG
+31. [LOW 33] Wait: WRITELOG
     Sessions are waiting for commit log blocks to be hardened to disk.
       - 7% of non-idle wait time (14500 ms over 8200 waits, 1.8 ms average)
       - 1.4 tasks waiting on average during the sample
       - signal wait 8% of the wait time
       > Check write latency on the log file (sys.dm_io_virtual_file_stats).
       > Look for many tiny autocommit transactions that could be batched.
-31. [LOW 31] Wait: LCK_M_S
+32. [LOW 31] Wait: LCK_M_S
     Sessions are blocked waiting for a lock held by someone else.
       - 10% of non-idle wait time (21000 ms over 6 waits, 3500.0 ms average)
       - 2.1 tasks waiting on average during the sample
@@ -224,11 +232,11 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: Blocking: spid 57 is blocking 6 session(s)
       > Look at the blocking section for the head blocker.
       > Check for open transactions left by the application.
-32. [LOW 30] max server memory is not set on a 64 GB host
+33. [LOW 30] max server memory is not set on a 64 GB host
     SQL Server will grow until the OS has to push back, which is a bad time to find out.
       - max server memory (MB) is the default 2147483647
       > Set it to leave several GB (more on big hosts) for the OS and anything else running there.
-33. [LOW 28] Wait: HADR_SYNC_COMMIT
+34. [LOW 28] Wait: HADR_SYNC_COMMIT
     Commits on the primary wait for a synchronous secondary to harden the log.
       - 7% of non-idle wait time (16000 ms over 7600 waits, 2.1 ms average)
       - 1.6 tasks waiting on average during the sample
@@ -236,10 +244,10 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: Availability group PayrollAG: PayrollDB on SQLDR02 is behind
       > Check log send queue, network latency and secondary log write latency.
       > See the availability group section of this report.
-34. [LOW 25] Page life expectancy is 180 seconds
+35. [LOW 25] Page life expectancy is 180 seconds
     Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
       - Buffer Manager: Page life expectancy = 180
       > Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
-35. [LOW 20] Log: Staging has 640 VLFs
+36. [LOW 20] Log: Staging has 640 VLFs
       - 640 VLFs in 6,144 MB of log (12 active)
       > Shrink the log once and regrow it in a few large steps to rebuild the VLFs.

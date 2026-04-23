@@ -113,6 +113,14 @@ class LogTests(unittest.TestCase):
         self.assertEqual(log.evidence, ["the log cannot be reused while a secondary is behind: Sales on R2 is behind"])
         self.assertEqual((behind.score, elsewhere.score), (75, 90))
 
+    def test_version_store_is_tied_to_the_blocking_chain(self):
+        store = Finding("pvs", "Persistent version store in PayrollDB is 31 GB", 40, data={"database": "PayrollDB"})
+        chain = Finding("blocking", "Blocking: spid 57", 80, data={"databases": ["PayrollDB"]})
+        correlate.apply([store, chain])
+        self.assertEqual(store.score, 40)
+        self.assertEqual(store.evidence, ["the oldest active transaction is probably the head blocker in: Blocking: spid 57"])
+        self.assertEqual(chain.evidence, ["also shows up as: Persistent version store in PayrollDB is 31 GB"])
+
     def test_a_low_scoring_finding_is_not_raised_by_a_zero_demotion(self):
         log = self.vlf("ACTIVE_TRANSACTION", score=3)
         chain = Finding("blocking", "Blocking", 80, data={"databases": ["PayrollDB"]})

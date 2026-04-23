@@ -17,7 +17,7 @@
   "summary": {
     "critical": 2,
     "high": 14,
-    "medium": 11,
+    "medium": 12,
     "low": 8,
     "info": 0
   },
@@ -49,7 +49,8 @@
         "oldest open transaction began 2023-03-14T08:51:20 (1h09m ago)",
         "head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]",
         "also shows up as: LCK_M_S, LCK_M_X",
-        "also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION"
+        "also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION",
+        "also shows up as: Persistent version store in PayrollDB is 31 GB"
       ],
       "advice": [
         "Find out why spid 57 is not finishing; KILL is the last resort."
@@ -675,6 +676,29 @@
         "database": "PayrollDB",
         "minutes_since_log_backup": 70,
         "log_since_backup_mb": 41200.0
+      }
+    },
+    {
+      "check": "pvs",
+      "title": "Persistent version store in PayrollDB is 31 GB",
+      "severity": "medium",
+      "score": 40,
+      "change": null,
+      "detail": "Row versions are piling up in the database because old transactions keep them alive.",
+      "block": [],
+      "evidence": [
+        "persistent version store is 31.0 GB, 16% of the 200 GB of data files",
+        "oldest active transaction id 8812334421 is holding back cleanup",
+        "the oldest active transaction is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)"
+      ],
+      "advice": [
+        "Find and finish that transaction: see the blocking section for sessions with open transactions.",
+        "Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "pvs_kb": 32505856,
+        "share_pct": 15.5
       }
     },
     {

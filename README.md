@@ -19,6 +19,7 @@ and the only waiting it does is the sample interval for the wait stats delta.
 | `vlf`        | VLF counts (`sys.dm_db_log_info`), log growth settings, `log_reuse_wait_desc` |
 | `agent`      | failed jobs with the failing step's error, jobs running far past their usual time |
 | `ag`         | replica connection and sync health, send and redo queues, suspended movement, lag |
+| `pvs`        | persisted version store (Accelerated Database Recovery) growth, SQL Server 2019+ |
 | `memory`     | queries waiting for a memory grant, and grants far larger than they use       |
 | `cpu`        | runnable queue per scheduler, signal waits, imbalance, the heaviest requests  |
 

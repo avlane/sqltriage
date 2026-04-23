@@ -92,6 +92,15 @@ RULES = [
         "the log backup job is failing: {}",
     ),
     Rule(
+        "the version store is kept alive by a long open transaction",
+        lambda f: f.check == "pvs",
+        _check("blocking"),
+        0,
+        0,
+        _same_database,
+        "the oldest active transaction is probably the head blocker in: {}",
+    ),
+    Rule(
         "the log is held by a secondary that is behind",
         lambda f: f.check == "vlf" and f.data.get("log_reuse_wait") == "AVAILABILITY_REPLICA",
         _check("ag", "log_send_queue_kb"),

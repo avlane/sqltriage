@@ -4,7 +4,7 @@ _Generated 2023-03-14 10:00:00_
 
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
 
-**35 finding(s):** 2 critical, 14 high, 11 medium, 8 low
+**36 finding(s):** 2 critical, 14 high, 12 medium, 8 low
 
 | # | Severity | Score | Finding |
 |---|----------|-------|---------|
@@ -34,15 +34,16 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 24 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
 | 25 | medium | 40 | Query Store in ReportsDB is not healthy |
 | 26 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
-| 27 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 28 | low | 35 | Wait: PAGELATCH_UP |
-| 29 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
-| 30 | low | 33 | Wait: WRITELOG |
-| 31 | low | 31 | Wait: LCK_M_S |
-| 32 | low | 30 | max server memory is not set on a 64 GB host |
-| 33 | low | 28 | Wait: HADR_SYNC_COMMIT |
-| 34 | low | 25 | Page life expectancy is 180 seconds |
-| 35 | low | 20 | Log: Staging has 640 VLFs |
+| 27 | medium | 40 | Persistent version store in PayrollDB is 31 GB |
+| 28 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 29 | low | 35 | Wait: PAGELATCH_UP |
+| 30 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
+| 31 | low | 33 | Wait: WRITELOG |
+| 32 | low | 31 | Wait: LCK_M_S |
+| 33 | low | 30 | max server memory is not set on a 64 GB host |
+| 34 | low | 28 | Wait: HADR_SYNC_COMMIT |
+| 35 | low | 25 | Page life expectancy is 180 seconds |
+| 36 | low | 20 | Log: Staging has 640 VLFs |
 
 **1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
@@ -69,6 +70,7 @@ spid 57 [sleeping] svc_payroll@APP01 open_tran=1  <- head blocker
 - head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]
 - also shows up as: LCK_M_S, LCK_M_X
 - also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
+- also shows up as: Persistent version store in PayrollDB is 31 GB
 
 Next steps:
 1. Find out why spid 57 is not finishing; KILL is the last resort.
@@ -354,7 +356,19 @@ Next steps:
 Next steps:
 1. Check the log backup job (see the Agent section) and the backup target.
 
-**27. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**27. Persistent version store in PayrollDB is 31 GB** (medium, 40)
+
+Row versions are piling up in the database because old transactions keep them alive.
+
+- persistent version store is 31.0 GB, 16% of the 200 GB of data files
+- oldest active transaction id 8812334421 is holding back cleanup
+- the oldest active transaction is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)
+
+Next steps:
+1. Find and finish that transaction: see the blocking section for sessions with open transactions.
+1. Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up.
+
+**28. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -362,7 +376,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**28. Wait: PAGELATCH_UP** (low, 35)
+**29. Wait: PAGELATCH_UP** (low, 35)
 
 Contention on a data page that is already in memory.
 
@@ -375,7 +389,7 @@ Next steps:
 1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
 1. In a user database look for last-page insert hot spots.
 
-**29. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
+**30. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
 - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
 - ran for 4540s before failing
@@ -385,7 +399,7 @@ Next steps:
 Next steps:
 1. The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
 
-**30. Wait: WRITELOG** (low, 33)
+**31. Wait: WRITELOG** (low, 33)
 
 Sessions are waiting for commit log blocks to be hardened to disk.
 
@@ -397,7 +411,7 @@ Next steps:
 1. Check write latency on the log file (sys.dm_io_virtual_file_stats).
 1. Look for many tiny autocommit transactions that could be batched.
 
-**31. Wait: LCK_M_S** (low, 31)
+**32. Wait: LCK_M_S** (low, 31)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -410,7 +424,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**32. max server memory is not set on a 64 GB host** (low, 30)
+**33. max server memory is not set on a 64 GB host** (low, 30)
 
 SQL Server will grow until the OS has to push back, which is a bad time to find out.
 
@@ -419,7 +433,7 @@ SQL Server will grow until the OS has to push back, which is a bad time to find 
 Next steps:
 1. Set it to leave several GB (more on big hosts) for the OS and anything else running there.
 
-**33. Wait: HADR_SYNC_COMMIT** (low, 28)
+**34. Wait: HADR_SYNC_COMMIT** (low, 28)
 
 Commits on the primary wait for a synchronous secondary to harden the log.
 
@@ -432,7 +446,7 @@ Next steps:
 1. Check log send queue, network latency and secondary log write latency.
 1. See the availability group section of this report.
 
-**34. Page life expectancy is 180 seconds** (low, 25)
+**35. Page life expectancy is 180 seconds** (low, 25)
 
 Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
 
@@ -441,7 +455,7 @@ Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop ma
 Next steps:
 1. Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
 
-**35. Log: Staging has 640 VLFs** (low, 20)
+**36. Log: Staging has 640 VLFs** (low, 20)
 
 - 640 VLFs in 6,144 MB of log (12 active)
 
