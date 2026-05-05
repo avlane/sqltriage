@@ -6,7 +6,7 @@ it twice, ``ctx.interval`` seconds apart, and look at the difference.
 """
 from collections import namedtuple
 
-from .. import waitinfo
+from .. import sampling, waitinfo
 from ..models import Finding
 
 NAME = "waits"
@@ -23,6 +23,7 @@ WHERE waiting_tasks_count > 0;"""
 WaitDelta = namedtuple("WaitDelta", "wait_type tasks wait_ms signal_ms max_wait_ms")
 
 
+@sampling.probe("waits")
 def snapshot(ctx):
     rows = ctx.source.fetch("waits_snapshot", SNAPSHOT_SQL)
     return {row["wait_type"]: row for row in rows}
@@ -73,22 +74,20 @@ def was_reset(before, after):
 
 
 def sample(ctx):
-    """Take the snapshots once per run and share the result.
+    """The wait delta for this run, worked out once and shared.
 
-    With ``ctx.samples`` above one, the interval is repeated that many times.
+    The snapshots come from the shared sampling window (sampling.py).  With
+    ``ctx.samples`` above one, the interval is repeated that many times.
     The delta covers the whole span and ``ctx.cache["waits_intervals"]`` holds
     each interval's wait time per wait type, so a trend can be shown.  If the
     counters were reset at any point the delta is empty and
     ``ctx.cache["waits_reset"]`` is set so ``run`` can say why.
     """
     if "waits" not in ctx.cache:
-        snapshots = [snapshot(ctx)]
-        started = ctx.clock()
-        for _ in range(max(1, ctx.samples)):
-            ctx.sleep(ctx.interval)
-            snapshots.append(snapshot(ctx))
+        taken = sampling.take(ctx)
+        snapshots = taken.series["waits"]
         # The queries take time too, so rates use what really passed.
-        ctx.cache["waits_elapsed"] = max(ctx.clock() - started, 0.001)
+        ctx.cache["waits_elapsed"] = taken.elapsed
         reset = any(was_reset(a, b) for a, b in zip(snapshots, snapshots[1:]))
         ctx.cache["waits_reset"] = reset
         ctx.cache["waits"] = [] if reset else compute_delta(snapshots[0], snapshots[-1])
