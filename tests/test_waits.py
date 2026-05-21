@@ -50,6 +50,8 @@ class Ramp(FixtureSource):
         self.calls = 0
 
     def fetch(self, name, sql, params=(), database=None):
+        if name != "waits_snapshot":
+            return []
         total = sum(self.increments[: self.calls])
         self.calls += 1
         return [row("WRITELOG", 10 * self.calls, 1000 + total, 0, 5), row("SLEEP_TASK", 1, 1 + self.calls * 1000)]
@@ -93,7 +95,7 @@ class TrendTests(unittest.TestCase):
         class Reset(Ramp):
             def fetch(inner, name, sql, params=(), database=None):
                 rows = super().fetch(name, sql, params, database)
-                if inner.calls == 3:
+                if rows and inner.calls == 3:
                     rows[0] = row("WRITELOG", 1, 5)
                 return rows
 
@@ -123,6 +125,8 @@ class ResetTests(unittest.TestCase):
             calls = 0
 
             def fetch(self, name, sql, params=(), database=None):
+                if name != "waits_snapshot":
+                    return []
                 Cleared.calls += 1
                 if Cleared.calls == 1:
                     return [row("WRITELOG", 100, 500)]

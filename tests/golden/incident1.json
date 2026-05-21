@@ -16,10 +16,10 @@
   "generated_at": "2023-03-14 10:00:00",
   "summary": {
     "critical": 2,
-    "high": 14,
-    "medium": 12,
+    "high": 15,
+    "medium": 13,
     "low": 8,
-    "info": 0
+    "info": 1
   },
   "findings": [
     {
@@ -273,6 +273,25 @@
         "online_schedulers": 16,
         "avg_runnable": 3.62,
         "signal_wait_pct": 6.8
+      }
+    },
+    {
+      "check": "counters",
+      "title": "2 deadlock(s) during the 10s sample",
+      "severity": "high",
+      "score": 70,
+      "change": null,
+      "detail": "Deadlock victims are rolled back with error 1205; applications that do not retry lose that work.",
+      "block": [],
+      "evidence": [
+        "Number of Deadlocks/sec (_Total) went up by 2"
+      ],
+      "advice": [
+        "Read the xml_deadlock_report events in the system_health session for the graphs.",
+        "Look at access order, missing indexes on the keys involved, and long transactions."
+      ],
+      "data": {
+        "deadlocks": 2
       }
     },
     {
@@ -613,6 +632,26 @@
       }
     },
     {
+      "check": "counters",
+      "title": "36% of batches compiled a plan",
+      "severity": "medium",
+      "score": 44,
+      "change": null,
+      "detail": "Compiling is CPU heavy and takes plan cache memory: plans are not being reused.",
+      "block": [],
+      "evidence": [
+        "150 compilations/s (12 of them recompilations) against 420 batch requests/s"
+      ],
+      "advice": [
+        "Look for ad hoc statements with literals (forced parameterization, or optimize for ad hoc workloads).",
+        "A high recompilation rate points at temp tables, statistics updates or SET options changing."
+      ],
+      "data": {
+        "compile_ratio": 0.357,
+        "batches_per_second": 420.0
+      }
+    },
+    {
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
       "severity": "medium",
@@ -907,6 +946,22 @@
         "vlf_count": 640,
         "log_reuse_wait": "NOTHING",
         "recovery_model": "SIMPLE"
+      }
+    },
+    {
+      "check": "counters",
+      "title": "Workload during the sample: 420 batch requests/s",
+      "severity": "info",
+      "score": 5,
+      "change": null,
+      "detail": "",
+      "block": [],
+      "evidence": [
+        "150 compilations/s, 12 recompilations/s, 1.4 lock waits/s"
+      ],
+      "advice": [],
+      "data": {
+        "batches_per_second": 420.0
       }
     }
   ],

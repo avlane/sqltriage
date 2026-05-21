@@ -8,9 +8,25 @@ times over) and hands back the series, so the whole run waits only once.
 """
 from collections import namedtuple
 
+from .source import SourceError
+
 PROBES = {}
 
-Samples = namedtuple("Samples", "series elapsed")
+
+class Samples(namedtuple("Samples", "series elapsed")):
+    """The readings of every probe, plus the time that passed between first and last."""
+
+    def snapshots(self, name):
+        """The snapshots for one probe; raises the SourceError if that probe's query failed.
+
+        A probe that cannot be read must not stop the others, so the error is
+        kept with the series and only raised by whoever asks for that probe.
+        """
+        values = self.series[name]
+        for value in values:
+            if isinstance(value, SourceError):
+                raise value
+        return values
 
 
 def probe(name):
@@ -23,21 +39,28 @@ def probe(name):
     return register
 
 
+def _read(name, ctx):
+    try:
+        return PROBES[name](ctx)
+    except SourceError as exc:
+        return exc
+
+
 def take(ctx):
     """The samples for this run, taken on the first call and shared after.
 
     ``series[name]`` is the list of that probe's snapshots, ``ctx.samples + 1``
-    of them.  ``elapsed`` is the time that really passed between the first
+    of them (use ``snapshots(name)`` to get them with errors raised).  ``elapsed`` is the time that really passed between the first
     readings and the last, which is longer than the interval when the queries
     are slow.
     """
     if "samples" not in ctx.cache:
         names = list(PROBES)
-        series = {name: [PROBES[name](ctx)] for name in names}
+        series = {name: [_read(name, ctx)] for name in names}
         started = ctx.clock()
         for _ in range(max(1, ctx.samples)):
             ctx.sleep(ctx.interval)
             for name in names:
-                series[name].append(PROBES[name](ctx))
+                series[name].append(_read(name, ctx))
         ctx.cache["samples"] = Samples(series, max(ctx.clock() - started, 0.001))
     return ctx.cache["samples"]

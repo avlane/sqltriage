@@ -52,6 +52,18 @@ class SamplingTests(unittest.TestCase):
         ctx = Context(Source(), interval=10, sleep=clock.sleep, clock=clock.now)
         self.assertEqual(sampling.take(ctx).elapsed, 11.5)
 
+    def test_a_failing_probe_does_not_stop_the_others(self):
+        from sqltriage.source import SourceError
+
+        @sampling.probe("broken")
+        def broken(ctx):
+            raise SourceError("denied")
+
+        taken = sampling.take(self.ctx())
+        self.assertEqual(taken.snapshots("a"), [1, 2])
+        with self.assertRaises(SourceError):
+            taken.snapshots("broken")
+
     def test_samples_below_one_still_take_one_interval(self):
         taken = sampling.take(self.ctx(samples=0))
         self.assertEqual(len(taken.series["a"]), 2)

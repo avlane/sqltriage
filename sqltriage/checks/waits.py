@@ -85,7 +85,7 @@ def sample(ctx):
     """
     if "waits" not in ctx.cache:
         taken = sampling.take(ctx)
-        snapshots = taken.series["waits"]
+        snapshots = taken.snapshots("waits")
         # The queries take time too, so rates use what really passed.
         ctx.cache["waits_elapsed"] = taken.elapsed
         reset = any(was_reset(a, b) for a, b in zip(snapshots, snapshots[1:]))
