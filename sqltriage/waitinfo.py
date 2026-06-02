@@ -352,6 +352,26 @@ PREFIX_INFO = [
 ]
 
 
+def describe(wait_type):
+    """A few printable lines about one wait type, for ``sqltriage explain``."""
+    wait_type = wait_type.strip().upper()
+    if is_benign(wait_type):
+        return [
+            wait_type,
+            "  Idle or background wait: sqltriage leaves it out of the report.",
+            "  It means a system task is waiting for work, not that anything is slow.",
+        ]
+    info = explain(wait_type)
+    lines = [wait_type]
+    if info is UNKNOWN:
+        lines.append("  Not one of the waits sqltriage knows how to explain.")
+    else:
+        lines.append("  Category: {}".format(info.category))
+        lines.append("  " + info.text)
+    lines.extend("  - " + item for item in info.advice)
+    return lines
+
+
 def explain(wait_type):
     info = WAIT_INFO.get(wait_type)
     if info is not None:

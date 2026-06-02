@@ -296,6 +296,27 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("cannot read baseline", err.getvalue())
 
+    def test_explain_a_wait(self):
+        out = io.StringIO()
+        code = main(["explain", "lck_m_x"], out=out)
+        self.assertEqual(code, 0)
+        text = out.getvalue()
+        self.assertTrue(text.startswith("LCK_M_X\n  Category: locking\n  Sessions are blocked waiting for a lock"))
+        self.assertIn("  - Look at the blocking section for the head blocker.", text)
+
+    def test_explain_several_and_the_special_cases(self):
+        out = io.StringIO()
+        main(["explain", "SLEEP_TASK", "SOMETHING_NEW"], out=out)
+        text = out.getvalue()
+        self.assertIn("SLEEP_TASK\n  Idle or background wait", text)
+        self.assertIn("\n\nSOMETHING_NEW\n  Not one of the waits sqltriage knows how to explain.", text)
+
+    def test_explain_needs_a_wait_type(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code = main(["explain"], out=io.StringIO())
+        self.assertEqual(code, 2)
+        self.assertIn("usage: sqltriage explain", err.getvalue())
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

@@ -4,7 +4,7 @@ import os
 import sys
 
 from . import __version__
-from . import baseline, config, history, preflight
+from . import baseline, config, history, preflight, waitinfo
 from .checks import CHECKS
 from .connect import LIBRARIES, build_connection_string, choose_library
 from .context import Context, ManualClock
@@ -109,8 +109,24 @@ def write_output(path, text):
     os.replace(temporary, path)
 
 
+def explain_main(words, out):
+    """sqltriage explain WAIT_TYPE [WAIT_TYPE ...]"""
+    if not words:
+        sys.stderr.write("usage: sqltriage explain WAIT_TYPE [WAIT_TYPE ...]\n")
+        return 2
+    for index, word in enumerate(words):
+        if index:
+            out.write("\n")
+        out.write("\n".join(waitinfo.describe(word)) + "\n")
+    return 0
+
+
 def main(argv=None, out=None):
     out = out or sys.stdout
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "explain":
+        return explain_main(argv[1:], out)
     parser = build_parser()
     options = {}
     path = config.find(parser.parse_known_args(argv)[0].config)

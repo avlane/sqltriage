@@ -121,6 +121,13 @@ files replay with `--fixtures DIR`, so you can look at the same data again later
 or attach it to a ticket. They contain real query text, logins and host names:
 read them before sharing.
 
+## Looking up a wait type
+
+    python -m sqltriage explain WRITELOG PAGEIOLATCH_SH
+
+prints what sqltriage knows about each: the category, what it means and what to
+check. Idle waits are named as such.
+
 ## Comparing with an earlier report
 
 Save a report as JSON on a quiet day, or just before a change:
