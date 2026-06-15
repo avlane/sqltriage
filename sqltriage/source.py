@@ -36,10 +36,11 @@ class DbApiSource(Source):
     without any driver installed.
     """
 
-    def __init__(self, connection_string, connect=None, query_timeout=60):
+    def __init__(self, connection_string, connect=None, query_timeout=60, login_timeout=15):
         self._connection_string = connection_string
         self._connect = connect
         self._query_timeout = query_timeout
+        self._login_timeout = login_timeout
         self._conn = None
         self._home = None
         self._current = None
@@ -47,7 +48,7 @@ class DbApiSource(Source):
     def _connection(self):
         if self._conn is None:
             connect = self._connect or self._import_connect()
-            self._conn = connect(self._connection_string, autocommit=True, timeout=15)
+            self._conn = connect(self._connection_string, autocommit=True, timeout=self._login_timeout)
             try:
                 self._conn.timeout = self._query_timeout
             except AttributeError:  # a driver without a settable query timeout
@@ -77,7 +78,10 @@ class DbApiSource(Source):
                 columns = [col[0] for col in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
             except Exception as exc:  # the driver's own Error classes, and friends
-                raise SourceError("{}: {}".format(name, exc)) from exc
+                message = "{}: {}".format(name, exc)
+                if "timeout" in str(exc).lower():
+                    message += " (the query took longer than --query-timeout, {} s)".format(self._query_timeout)
+                raise SourceError(message) from exc
         finally:
             cursor.close()
 

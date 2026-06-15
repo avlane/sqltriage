@@ -37,6 +37,8 @@ ARGUMENT_KEYS = {
         "user": "user",
         "driver": "driver",
         "library": "library",
+        "query_timeout": "query_timeout",
+        "login_timeout": "login_timeout",
         "trust_server_cert": "trust_server_cert",
         "no_encrypt": "no_encrypt",
     },

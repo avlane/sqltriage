@@ -55,6 +55,35 @@ class PyodbcSourceTests(unittest.TestCase):
             source.fetch("waits", "SELECT 1")
         self.assertIn("waits", str(cm.exception))
 
+    def test_timeouts_are_passed_to_the_driver(self):
+        seen = {}
+
+        def connect(cs, **kwargs):
+            seen.update(kwargs)
+            return FakeConnection([(["a"], [(1,)])])
+
+        source = PyodbcSource("DSN=x", connect=connect, query_timeout=120, login_timeout=5)
+        source.fetch("rows", "SELECT 1")
+        self.assertEqual(seen["timeout"], 5)
+        self.assertEqual(source._conn.timeout, 120)
+
+    def test_defaults(self):
+        source, conn, seen = self.make([(["a"], [(1,)])])
+        source.fetch("rows", "SELECT 1")
+        self.assertEqual((seen["kwargs"]["timeout"], conn.timeout), (15, 60))
+
+    def test_timeout_errors_say_which_option_to_raise(self):
+        source, _, _ = self.make([RuntimeError("Query timeout expired")])
+        with self.assertRaises(SourceError) as cm:
+            source.fetch("waits", "SELECT 1")
+        self.assertIn("longer than --query-timeout, 60 s", str(cm.exception))
+
+    def test_other_errors_do_not_mention_the_timeout(self):
+        source, _, _ = self.make([RuntimeError("permission denied")])
+        with self.assertRaises(SourceError) as cm:
+            source.fetch("waits", "SELECT 1")
+        self.assertNotIn("--query-timeout", str(cm.exception))
+
     def test_driver_without_a_settable_timeout(self):
         class NoTimeout(FakeConnection):
             ready = False

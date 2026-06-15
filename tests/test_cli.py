@@ -317,6 +317,18 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage: sqltriage explain", err.getvalue())
 
+    def test_timeout_flags_reach_the_source(self):
+        import unittest.mock
+
+        with unittest.mock.patch("sqltriage.cli.PyodbcSource") as source_class:
+            source_class.return_value.fetch.side_effect = RuntimeError("stop here")
+            try:
+                main(["--query-timeout", "300", "--login-timeout", "3", "--driver", "ODBC Driver 18 for SQL Server", "--library", "pyodbc"], out=io.StringIO())
+            except RuntimeError:
+                pass
+        kwargs = source_class.call_args.kwargs
+        self.assertEqual((kwargs["query_timeout"], kwargs["login_timeout"]), (300, 3))
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

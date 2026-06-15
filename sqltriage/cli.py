@@ -28,6 +28,8 @@ def build_parser():
     parser.add_argument("--library", choices=("auto",) + LIBRARIES, default="auto",
                         help="Python driver: pyodbc, or Microsoft's mssql-python (default: pyodbc, else mssql-python if only it is installed)")
     parser.add_argument("--driver", help="ODBC driver name (default: newest installed of 18 and 17)")
+    parser.add_argument("--query-timeout", type=int, default=60, metavar="SECONDS", help="give up on a query after this long (default 60)")
+    parser.add_argument("--login-timeout", type=int, default=15, metavar="SECONDS", help="give up connecting after this long (default 15)")
     parser.add_argument("--no-encrypt", action="store_true", help="connect without encryption")
     parser.add_argument("--trust-server-cert", action="store_true", help="accept a self-signed server certificate")
     parser.add_argument("--record", metavar="DIR", help="also save every query result to DIR as replayable fixtures")
@@ -154,7 +156,9 @@ def main(argv=None, out=None):
     else:
         library = choose_library(args.library)
         source_class = MssqlPythonSource if library == "mssql-python" else PyodbcSource
-        source = source_class(connection_string(args, library))
+        source = source_class(
+            connection_string(args, library), query_timeout=args.query_timeout, login_timeout=args.login_timeout
+        )
         if args.record:
             source = RecordingSource(source, args.record)
     options = dict(options)
