@@ -10,7 +10,9 @@ NAME = "agent"
 DEFAULT_HOURS = 24
 
 # step_id = 0 is the job outcome row; run_status 0 = failed.  agent_datetime
-# turns the integer run_date / run_time pair into a datetime.
+# turns the integer run_date / run_time pair into a datetime, but a function of
+# the columns cannot use an index, so the plain run_date comparison narrows the
+# rows first (msdb's sysjobhistory can hold years of history).
 FAILED_SQL = """\
 SELECT j.name AS job_name,
        msdb.dbo.agent_datetime(h.run_date, h.run_time) AS started_at,
@@ -21,6 +23,7 @@ JOIN msdb.dbo.sysjobs AS j
   ON j.job_id = h.job_id
 WHERE h.step_id = 0
   AND h.run_status = 0
+  AND h.run_date >= CONVERT(int, CONVERT(char(8), DATEADD(HOUR, -{hours}, GETDATE()), 112))
   AND msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())
 ORDER BY started_at DESC;"""
 
@@ -39,6 +42,7 @@ JOIN msdb.dbo.sysjobs AS j
   ON j.job_id = h.job_id
 WHERE h.step_id > 0
   AND h.run_status = 0
+  AND h.run_date >= CONVERT(int, CONVERT(char(8), DATEADD(HOUR, -{hours}, GETDATE()), 112))
   AND msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())
 ORDER BY started_at DESC;"""
 

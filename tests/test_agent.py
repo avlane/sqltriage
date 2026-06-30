@@ -72,6 +72,17 @@ class FailedJobTests(unittest.TestCase):
         ctx = Context(FixtureSource(FIXTURES), options={"ignore_jobs": ["Purge *"]})
         self.assertEqual([f.data["job"] for f in agent.long_running_findings(ctx)], ["IndexOptimize - USER_DATABASES"])
 
+    def test_history_is_narrowed_by_the_plain_date_column_first(self):
+        for sql in (agent.FAILED_SQL, agent.FAILED_STEPS_SQL):
+            narrow = sql.index("h.run_date >= CONVERT(int, CONVERT(char(8), DATEADD(HOUR, -{hours}, GETDATE()), 112))")
+            exact = sql.index("msdb.dbo.agent_datetime(h.run_date, h.run_time) >= DATEADD(HOUR, -{hours}, GETDATE())")
+            self.assertLess(narrow, exact)
+
+    def test_both_history_queries_format_cleanly(self):
+        for sql in (agent.FAILED_SQL, agent.FAILED_STEPS_SQL):
+            self.assertNotIn("{", sql.format(hours=24))
+            self.assertIn("DATEADD(HOUR, -24, GETDATE())", sql.format(hours=24))
+
     def test_window_is_part_of_the_query(self):
         seen = []
 
