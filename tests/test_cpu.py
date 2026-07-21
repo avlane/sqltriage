@@ -57,6 +57,30 @@ class TopRequestsTests(unittest.TestCase):
         self.assertTrue(any(e.startswith("spid 112 ") for e in finding.evidence))
 
 
+class QuietSignalTests(unittest.TestCase):
+    def run_with(self, runnable, signal_pct):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name != "cpu_schedulers":
+                    return []
+                return [{"scheduler_id": i, "cpu_id": i, "status": "VISIBLE ONLINE", "runnable_tasks_count": runnable[i],
+                         "current_tasks_count": 5, "work_queue_count": 0} for i in range(len(runnable))]
+
+        c = Context(Fake(FIXTURES), sleep=lambda s: None)
+        c.cache["waits"] = [waits.WaitDelta("WRITELOG", 10, 1000, int(10 * signal_pct), None)]
+        return cpu.run(c)
+
+    def test_high_signal_share_with_an_empty_runnable_queue_is_ignored(self):
+        (finding,) = self.run_with([0, 1, 0, 1, 0, 1, 0, 1], 60)
+        self.assertEqual(finding.score, 0)
+        self.assertIn("the runnable queue is short so it does not count", finding.evidence[1])
+
+    def test_the_same_signal_share_counts_when_tasks_queue(self):
+        (finding,) = self.run_with([2, 2, 2, 2, 2, 2, 2, 2], 60)
+        self.assertEqual(finding.score, 80)  # signal 75 beats runnable 55, plus 5 for both
+        self.assertNotIn("does not count", " ".join(finding.evidence))
+
+
 class SignalTrendTests(unittest.TestCase):
     def deltas(self, signal_pct):
         return [waits.WaitDelta("WRITELOG", 10, 1000, int(10 * signal_pct), None)]

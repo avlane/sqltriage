@@ -1,0 +1,11 @@
+[
+  {
+    "database_name": "SalesDB",
+    "log_backup_time": "2024-02-02T09:55:00",
+    "minutes_since_log_backup": 5,
+    "log_since_last_log_backup_mb": 80.0,
+    "total_log_size_mb": 4096.0,
+    "active_log_size_mb": 90.0,
+    "log_truncation_holdup_reason": "LOG_BACKUP"
+  }
+]

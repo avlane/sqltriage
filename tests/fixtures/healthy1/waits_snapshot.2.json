@@ -1,0 +1,58 @@
+[
+  {
+    "wait_type": "SLEEP_TASK",
+    "waiting_tasks_count": 91250000,
+    "wait_time_ms": 912500000,
+    "max_wait_time_ms": 1000,
+    "signal_wait_time_ms": 1900
+  },
+  {
+    "wait_type": "XE_TIMER_EVENT",
+    "waiting_tasks_count": 40016,
+    "wait_time_ms": 640160000,
+    "max_wait_time_ms": 15000,
+    "signal_wait_time_ms": 1003
+  },
+  {
+    "wait_type": "LAZYWRITER_SLEEP",
+    "waiting_tasks_count": 51210,
+    "wait_time_ms": 51210000,
+    "max_wait_time_ms": 1000,
+    "signal_wait_time_ms": 1002
+  },
+  {
+    "wait_type": "WRITELOG",
+    "waiting_tasks_count": 9000600,
+    "wait_time_ms": 6100900,
+    "max_wait_time_ms": 40,
+    "signal_wait_time_ms": 1060
+  },
+  {
+    "wait_type": "PAGEIOLATCH_SH",
+    "waiting_tasks_count": 2200080,
+    "wait_time_ms": 7000400,
+    "max_wait_time_ms": 120,
+    "signal_wait_time_ms": 1005
+  },
+  {
+    "wait_type": "SOS_SCHEDULER_YIELD",
+    "waiting_tasks_count": 70003000,
+    "wait_time_ms": 21001200,
+    "max_wait_time_ms": 30,
+    "signal_wait_time_ms": 1700
+  },
+  {
+    "wait_type": "ASYNC_NETWORK_IO",
+    "waiting_tasks_count": 500120,
+    "wait_time_ms": 3100300,
+    "max_wait_time_ms": 90,
+    "signal_wait_time_ms": 1008
+  },
+  {
+    "wait_type": "LCK_M_S",
+    "waiting_tasks_count": 29002,
+    "wait_time_ms": 920020,
+    "max_wait_time_ms": 12,
+    "signal_wait_time_ms": 1000
+  }
+]

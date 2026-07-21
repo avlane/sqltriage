@@ -1,0 +1,98 @@
+[
+  {
+    "scheduler_id": 0,
+    "cpu_id": 0,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 0,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 1,
+    "cpu_id": 1,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 1,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 2,
+    "cpu_id": 2,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 0,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 3,
+    "cpu_id": 3,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 1,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 4,
+    "cpu_id": 4,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 0,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 5,
+    "cpu_id": 5,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 1,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 6,
+    "cpu_id": 6,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 0,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  },
+  {
+    "scheduler_id": 7,
+    "cpu_id": 7,
+    "status": "VISIBLE ONLINE",
+    "is_online": 1,
+    "current_tasks_count": 14,
+    "runnable_tasks_count": 1,
+    "current_workers_count": 22,
+    "active_workers_count": 6,
+    "work_queue_count": 0,
+    "pending_disk_io_count": 0
+  }
+]

@@ -118,11 +118,19 @@ def significant(deltas):
     return [d for d in deltas if not waitinfo.is_benign(d.wait_type)]
 
 
+# Some wait is always the biggest share.  If hardly any task was waiting on it,
+# on average, it is background noise however large its share.
+QUIET_CONCURRENCY = 0.25
+QUIET_CAP = 14
+
+
 def score_wait(delta, share, interval_ms):
     """0-95: what the wait is, how much of the wait time it is, how many sessions it holds up."""
     info = waitinfo.explain(delta.wait_type)
     concurrency = delta.wait_ms / interval_ms  # average number of tasks waiting
     score = info.weight + min(35.0, share * 0.5) + min(15.0, concurrency * 3)
+    if concurrency < QUIET_CONCURRENCY:
+        score = min(score, QUIET_CAP)
     return int(min(95, round(score)))
 
 

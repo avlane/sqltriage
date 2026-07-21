@@ -1,0 +1,22 @@
+[
+  {
+    "ag_name": "SalesAG",
+    "replica_server_name": "SQLTEST01",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "SalesDB",
+    "is_failover_ready": 1,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  },
+  {
+    "ag_name": "SalesAG",
+    "replica_server_name": "SQLTEST02",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "database_name": "SalesDB",
+    "is_failover_ready": 1,
+    "is_database_joined": 1,
+    "is_pending_secondary_suspend": 0
+  }
+]

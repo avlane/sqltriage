@@ -1,0 +1,12 @@
+[
+  {
+    "server_name": "SQLTEST01",
+    "product_version": "16.0.4135.4",
+    "major_version": 16,
+    "edition": "Standard Edition (64-bit)",
+    "is_hadr_enabled": 1,
+    "tempdb_metadata_memory_optimized": 0,
+    "sqlserver_start_time": "2024-02-02T03:10:11",
+    "cpu_count": 8
+  }
+]

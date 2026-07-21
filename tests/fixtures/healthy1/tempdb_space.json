@@ -1,0 +1,9 @@
+[
+  {
+    "total_mb": 16384,
+    "free_mb": 11800,
+    "user_objects_mb": 300,
+    "internal_objects_mb": 900,
+    "version_store_mb": 3300
+  }
+]

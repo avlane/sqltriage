@@ -1,0 +1,9 @@
+[
+  {
+    "server_name": "SQLTEST01",
+    "view_server_state": 1,
+    "view_server_performance_state": 1,
+    "view_any_definition": 1,
+    "msdb_access": 1
+  }
+]

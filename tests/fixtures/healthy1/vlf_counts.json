@@ -1,0 +1,34 @@
+[
+  {
+    "database_name": "master",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 4,
+    "total_log_mb": 2.0,
+    "active_vlfs": 2
+  },
+  {
+    "database_name": "msdb",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 8,
+    "total_log_mb": 20.0,
+    "active_vlfs": 2
+  },
+  {
+    "database_name": "tempdb",
+    "recovery_model_desc": "SIMPLE",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 8,
+    "total_log_mb": 512.0,
+    "active_vlfs": 2
+  },
+  {
+    "database_name": "SalesDB",
+    "recovery_model_desc": "FULL",
+    "log_reuse_wait_desc": "NOTHING",
+    "vlf_count": 24,
+    "total_log_mb": 4096.0,
+    "active_vlfs": 2
+  }
+]

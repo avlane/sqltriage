@@ -187,6 +187,17 @@ class SampleTests(unittest.TestCase):
         self.assertGreater(by_name["LCK_M_X"].score, by_name["ASYNC_NETWORK_IO"].score)
         self.assertEqual(by_name["LCK_M_X"].data["category"], "locking")
 
+    def test_a_wait_few_tasks_were_stuck_on_is_background_noise(self):
+        ctx = Context(FixtureSource(FIXTURES), interval=10, sleep=lambda s: None)
+        quiet = waits.WaitDelta("WRITELOG", 600, 900, 60, None)   # 0.09 tasks waiting on average
+        busy = waits.WaitDelta("WRITELOG", 600, 90000, 60, None)  # 9 tasks waiting on average
+        self.assertEqual(waits.score_wait(quiet, 90.0, 10000), waits.QUIET_CAP)
+        self.assertGreater(waits.score_wait(busy, 90.0, 10000), 50)
+
+    def test_the_cap_only_lowers(self):
+        small = waits.WaitDelta("ASYNC_NETWORK_IO", 1, 10, 0, None)
+        self.assertLessEqual(waits.score_wait(small, 0.1, 10000), waits.QUIET_CAP)
+
     def test_nothing_significant(self):
         ctx = Context(FixtureSource(FIXTURES), interval=1, sleep=lambda s: None)
         ctx.cache["waits"] = [waits.WaitDelta("SLEEP_TASK", 5, 100, 1, None)]

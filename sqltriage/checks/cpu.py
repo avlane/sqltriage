@@ -62,6 +62,10 @@ STATEMENT_LIMIT = 160
 RUNNABLE_LEVELS = [(5, 85), (3, 70), (2, 55), (1, 40)]
 # (signal wait percentage at or above, score)
 SIGNAL_LEVELS = [(25, 75), (15, 50)]
+# Signal waits are a share of whatever waiting there was, so on an idle server a
+# few milliseconds can make the share look alarming.  They only count when tasks
+# really are queueing for a CPU.
+SIGNAL_MIN_RUNNABLE = 1.0
 
 
 # One scheduler piling up work while the rest idle points at affinity settings,
@@ -144,7 +148,7 @@ def run(ctx):
     direction = waits.trend(per_interval) if len(per_interval) > 1 else None
 
     runnable_score = step_score(average, RUNNABLE_LEVELS)
-    signal_score = step_score(signal, SIGNAL_LEVELS)
+    signal_score = step_score(signal, SIGNAL_LEVELS) if average >= SIGNAL_MIN_RUNNABLE else 0
     score = max(runnable_score, signal_score)
     if runnable_score and signal_score:
         score += 5
@@ -156,7 +160,9 @@ def run(ctx):
 
     evidence = [
         "{} online schedulers, runnable queue average {:.1f}, maximum {}".format(len(online), average, max(runnable)),
-        "signal waits are {:.1f}% of non-idle wait time (15% or more is a concern)".format(signal),
+        "signal waits are {:.1f}% of non-idle wait time (15% or more is a concern{})".format(
+            signal, "" if average >= SIGNAL_MIN_RUNNABLE else ", but the runnable queue is short so it does not count"
+        ),
     ]
     if direction:
         evidence.append(

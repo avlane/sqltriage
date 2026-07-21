@@ -1,0 +1,18 @@
+[
+  {
+    "ag_name": "SalesAG",
+    "replica_server_name": "SQLTEST02",
+    "database_name": "SalesDB",
+    "synchronization_state_desc": "SYNCHRONIZED",
+    "synchronization_health_desc": "HEALTHY",
+    "is_suspended": 0,
+    "suspend_reason_desc": null,
+    "log_send_queue_size": 40,
+    "log_send_rate": 9000,
+    "redo_queue_size": 120,
+    "redo_rate": 8000,
+    "last_commit_time": "2024-02-02T09:59:59",
+    "primary_last_commit_time": "2024-02-02T09:59:59",
+    "secondary_lag_seconds": 0
+  }
+]
