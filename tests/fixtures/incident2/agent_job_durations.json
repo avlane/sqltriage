@@ -1,0 +1,8 @@
+[
+  {
+    "job_name": "Update Statistics - Sales",
+    "runs": 90,
+    "avg_seconds": 780.0,
+    "max_seconds": 1500
+  }
+]

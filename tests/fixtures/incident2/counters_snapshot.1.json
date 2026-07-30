@@ -1,0 +1,32 @@
+[
+  {
+    "counter_name": "Number of Deadlocks/sec",
+    "instance_name": "_Total",
+    "cntr_value": 2
+  },
+  {
+    "counter_name": "Lock Timeouts/sec",
+    "instance_name": "_Total",
+    "cntr_value": 14
+  },
+  {
+    "counter_name": "Lock Waits/sec",
+    "instance_name": "_Total",
+    "cntr_value": 9100
+  },
+  {
+    "counter_name": "Batch Requests/sec",
+    "instance_name": null,
+    "cntr_value": 880000000
+  },
+  {
+    "counter_name": "SQL Compilations/sec",
+    "instance_name": null,
+    "cntr_value": 9100000
+  },
+  {
+    "counter_name": "SQL Re-Compilations/sec",
+    "instance_name": null,
+    "cntr_value": 410000
+  }
+]

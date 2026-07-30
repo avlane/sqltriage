@@ -1,0 +1,34 @@
+[
+  {
+    "database_name": "master",
+    "file_id": 2,
+    "size_mb": 2,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "msdb",
+    "file_id": 2,
+    "size_mb": 20,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "tempdb",
+    "file_id": 2,
+    "size_mb": 512,
+    "growth_value": 64,
+    "is_percent_growth": 0,
+    "max_size": -1
+  },
+  {
+    "database_name": "SalesDB",
+    "file_id": 2,
+    "size_mb": 204800,
+    "growth_value": 10,
+    "is_percent_growth": 1,
+    "max_size": -1
+  }
+]

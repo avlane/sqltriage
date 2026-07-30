@@ -1,0 +1,30 @@
+[
+  {
+    "ag_name": "SalesAG",
+    "replica_server_name": "SQLTEST01",
+    "role_desc": "PRIMARY",
+    "operational_state_desc": "ONLINE",
+    "connected_state_desc": "CONNECTED",
+    "recovery_health_desc": "ONLINE",
+    "synchronization_health_desc": "HEALTHY",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "last_connect_error_number": null,
+    "last_connect_error_description": null,
+    "last_connect_error_timestamp": null
+  },
+  {
+    "ag_name": "SalesAG",
+    "replica_server_name": "SQLTEST02",
+    "role_desc": "SECONDARY",
+    "operational_state_desc": "ONLINE",
+    "connected_state_desc": "CONNECTED",
+    "recovery_health_desc": "ONLINE",
+    "synchronization_health_desc": "PARTIALLY_HEALTHY",
+    "availability_mode_desc": "SYNCHRONOUS_COMMIT",
+    "failover_mode_desc": "AUTOMATIC",
+    "last_connect_error_number": null,
+    "last_connect_error_description": null,
+    "last_connect_error_timestamp": null
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "file_id": 1,
+    "name": "temp0",
+    "physical_name": "T:\\TempDB\\t0.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 2,
+    "name": "temp1",
+    "physical_name": "T:\\TempDB\\t1.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 3,
+    "name": "temp2",
+    "physical_name": "T:\\TempDB\\t2.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 4,
+    "name": "temp3",
+    "physical_name": "T:\\TempDB\\t3.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 5,
+    "name": "temp4",
+    "physical_name": "T:\\TempDB\\t4.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 6,
+    "name": "temp5",
+    "physical_name": "T:\\TempDB\\t5.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 7,
+    "name": "temp6",
+    "physical_name": "T:\\TempDB\\t6.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  },
+  {
+    "file_id": 8,
+    "name": "temp7",
+    "physical_name": "T:\\TempDB\\t7.ndf",
+    "size_mb": 2048,
+    "growth_mb": 256,
+    "is_percent_growth": 0,
+    "cpu_count": 8
+  }
+]
