@@ -51,6 +51,9 @@ Output formats (`-f`): `text` (the default), `json` (with a `schema_version`)
 and `markdown` for pasting into a ticket. `--min-severity high` hides the lower
 ranked findings and says how many were hidden.
 
+Each check, the views it reads and the permissions it needs are described in
+[docs/checks.md](docs/checks.md).
+
 ## How findings are ranked
 
 Every finding has a score from 0 to 100 and a label: critical (85 and up), high
