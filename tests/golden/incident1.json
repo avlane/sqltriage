@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "tool": "sqltriage 0.6.0",
   "server": "SQLPROD01",
   "instance": {
@@ -23,6 +23,8 @@
   },
   "findings": [
     {
+      "rank": 1,
+      "key": "blocking|Blocking: spid # is blocking # session(s)|57",
       "check": "blocking",
       "title": "Blocking: spid 57 is blocking 6 session(s)",
       "severity": "critical",
@@ -56,15 +58,17 @@
         "Find out why spid 57 is not finishing; KILL is the last resort."
       ],
       "data": {
-        "head_session_id": 57,
         "databases": [
           "PayrollDB"
         ],
-        "victims": 6,
-        "longest_wait_s": 94.0
+        "head_session_id": 57,
+        "longest_wait_s": 94.0,
+        "victims": 6
       }
     },
     {
+      "rank": 2,
+      "key": "vlf|Log: PayrollDB has # VLFs and log reuse wait ACTIVE_TRANSACTION|PayrollDB",
       "check": "vlf",
       "title": "Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION",
       "severity": "critical",
@@ -85,12 +89,14 @@
       ],
       "data": {
         "database": "PayrollDB",
-        "vlf_count": 18432,
         "log_reuse_wait": "ACTIVE_TRANSACTION",
-        "recovery_model": "FULL"
+        "recovery_model": "FULL",
+        "vlf_count": 18432
       }
     },
     {
+      "rank": 3,
+      "key": "tempdb|tempdb allocation contention: # task(s) waiting on PFS/GAM/SGAM pages",
       "check": "tempdb",
       "title": "tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages",
       "severity": "high",
@@ -114,11 +120,13 @@
       ],
       "data": {
         "allocation_tasks": 15,
-        "other_tasks": 1,
-        "longest_wait_ms": 31
+        "longest_wait_ms": 31,
+        "other_tasks": 1
       }
     },
     {
+      "rank": 4,
+      "key": "ag|Availability group PayrollAG: failover to SQLPROD# is not ready|PayrollAG|SQLPROD02",
       "check": "ag",
       "title": "Availability group PayrollAG: failover to SQLPROD02 is not ready",
       "severity": "high",
@@ -135,14 +143,16 @@
       ],
       "data": {
         "ag": "PayrollAG",
-        "replica": "SQLPROD02",
+        "not_joined": [],
         "not_ready": [
           "ReportsDB"
         ],
-        "not_joined": []
+        "replica": "SQLPROD02"
       }
     },
     {
+      "rank": 5,
+      "key": "agent|Agent job failed: DatabaseBackup - USER_DATABASES - LOG (#x in #h)|DatabaseBackup - USER_DATABASES - LOG",
       "check": "agent",
       "title": "Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)",
       "severity": "high",
@@ -161,12 +171,14 @@
         "A backup failed; the real reason is in the SQL Server error log just before this time."
       ],
       "data": {
-        "job": "DatabaseBackup - USER_DATABASES - LOG",
         "failures": 3,
+        "job": "DatabaseBackup - USER_DATABASES - LOG",
         "window_hours": 24
       }
     },
     {
+      "rank": 6,
+      "key": "vlf|Log backups: ReportsDB last one was #h#m ago|ReportsDB",
       "check": "vlf",
       "title": "Log backups: ReportsDB last one was 12h00m ago",
       "severity": "high",
@@ -186,11 +198,13 @@
       ],
       "data": {
         "database": "ReportsDB",
-        "minutes_since_log_backup": 720,
-        "log_since_backup_mb": 21500.0
+        "log_since_backup_mb": 21500.0,
+        "minutes_since_log_backup": 720
       }
     },
     {
+      "rank": 7,
+      "key": "ag|Availability group PayrollAG: PayrollDB on SQLDR# is behind|PayrollAG|SQLDR02|PayrollDB",
       "check": "ag",
       "title": "Availability group PayrollAG: PayrollDB on SQLDR02 is behind",
       "severity": "high",
@@ -213,15 +227,17 @@
       ],
       "data": {
         "ag": "PayrollAG",
-        "replica": "SQLDR02",
         "database": "PayrollDB",
+        "estimated_data_loss_s": 5400,
+        "estimated_recovery_s": 3000,
         "log_send_queue_kb": 4200000,
         "redo_queue_kb": 120000,
-        "estimated_data_loss_s": 5400,
-        "estimated_recovery_s": 3000
+        "replica": "SQLDR02"
       }
     },
     {
+      "rank": 8,
+      "key": "ag|Availability group PayrollAG: ReportsDB on SQLPROD# is behind|PayrollAG|SQLPROD02|ReportsDB",
       "check": "ag",
       "title": "Availability group PayrollAG: ReportsDB on SQLPROD02 is behind",
       "severity": "high",
@@ -240,15 +256,17 @@
       ],
       "data": {
         "ag": "PayrollAG",
-        "replica": "SQLPROD02",
         "database": "ReportsDB",
+        "estimated_data_loss_s": 2282,
+        "estimated_recovery_s": 0,
         "log_send_queue_kb": 0,
         "redo_queue_kb": 0,
-        "estimated_data_loss_s": 2282,
-        "estimated_recovery_s": 0
+        "replica": "SQLPROD02"
       }
     },
     {
+      "rank": 9,
+      "key": "cpu|CPU scheduler pressure: runnable queue averages # per scheduler",
       "check": "cpu",
       "title": "CPU scheduler pressure: runnable queue averages 3.6 per scheduler",
       "severity": "high",
@@ -270,12 +288,14 @@
         "Check that the host is not CPU-starved by something outside SQL Server."
       ],
       "data": {
-        "online_schedulers": 16,
         "avg_runnable": 3.62,
+        "online_schedulers": 16,
         "signal_wait_pct": 6.8
       }
     },
     {
+      "rank": 10,
+      "key": "counters|# deadlock(s) during the #s sample",
       "check": "counters",
       "title": "2 deadlock(s) during the 10s sample",
       "severity": "high",
@@ -295,6 +315,8 @@
       }
     },
     {
+      "rank": 11,
+      "key": "tempdb|tempdb is #% full",
       "check": "tempdb",
       "title": "tempdb is 90% full",
       "severity": "high",
@@ -317,6 +339,8 @@
       }
     },
     {
+      "rank": 12,
+      "key": "ag|Availability group PayrollAG: replica SQLDR# is unhealthy|PayrollAG|SQLDR02",
       "check": "ag",
       "title": "Availability group PayrollAG: replica SQLDR02 is unhealthy",
       "severity": "high",
@@ -340,6 +364,8 @@
       }
     },
     {
+      "rank": 13,
+      "key": "agent|Agent job running long: IndexOptimize - USER_DATABASES (#h#m)|IndexOptimize - USER_DATABASES",
       "check": "agent",
       "title": "Agent job running long: IndexOptimize - USER_DATABASES (9h00m)",
       "severity": "high",
@@ -360,6 +386,8 @@
       }
     },
     {
+      "rank": 14,
+      "key": "memory|# queries waiting for a memory grant",
       "check": "memory",
       "title": "3 queries waiting for a memory grant",
       "severity": "high",
@@ -379,12 +407,14 @@
         "Update statistics or add the missing index so the optimizer asks for less."
       ],
       "data": {
-        "waiting": 3,
         "longest_wait_s": 48.0,
-        "requested_gb": 12.0
+        "requested_gb": 12.0,
+        "waiting": 3
       }
     },
     {
+      "rank": 15,
+      "key": "querystore|Forced plan failing in PayrollDB: plan # for query # (usp_EmployeeYtd)|PayrollDB|55",
       "check": "querystore",
       "title": "Forced plan failing in PayrollDB: plan 55 for query 3301 (usp_EmployeeYtd)",
       "severity": "high",
@@ -401,12 +431,14 @@
       ],
       "data": {
         "database": "PayrollDB",
-        "plan_id": 55,
         "failures": 214,
+        "plan_id": 55,
         "reason": "NO_INDEX"
       }
     },
     {
+      "rank": 16,
+      "key": "memory|spid # holds a # GB memory grant and uses # GB|112",
       "check": "memory",
       "title": "spid 112 holds a 12.0 GB memory grant and uses 1.0 GB",
       "severity": "high",
@@ -421,12 +453,14 @@
         "An estimate far above reality caused this: check statistics and parameter sniffing for this query."
       ],
       "data": {
-        "session_id": 112,
         "granted_kb": 12582912,
+        "session_id": 112,
         "used_kb": 1048576
       }
     },
     {
+      "rank": 17,
+      "key": "tempdb|tempdb file layout: # data file(s), sizes not even",
       "check": "tempdb",
       "title": "tempdb file layout: 4 data file(s), sizes not even",
       "severity": "high",
@@ -444,8 +478,8 @@
         "Resize the files to the same size and growth increment so allocations spread evenly."
       ],
       "data": {
-        "data_files": 4,
         "cpu_count": 16,
+        "data_files": 4,
         "sizes_mb": [
           8192,
           1024,
@@ -455,6 +489,8 @@
       }
     },
     {
+      "rank": 18,
+      "key": "vlf|Log: ReportsDB has # VLFs and log reuse wait LOG_BACKUP|ReportsDB",
       "check": "vlf",
       "title": "Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP",
       "severity": "medium",
@@ -475,12 +511,14 @@
       ],
       "data": {
         "database": "ReportsDB",
-        "vlf_count": 2300,
         "log_reuse_wait": "LOG_BACKUP",
-        "recovery_model": "FULL"
+        "recovery_model": "FULL",
+        "vlf_count": 2300
       }
     },
     {
+      "rank": 19,
+      "key": "ag|Availability group PayrollAG: failover to SQLDR# is not ready|PayrollAG|SQLDR02",
       "check": "ag",
       "title": "Availability group PayrollAG: failover to SQLDR02 is not ready",
       "severity": "medium",
@@ -496,14 +534,16 @@
       ],
       "data": {
         "ag": "PayrollAG",
-        "replica": "SQLDR02",
-        "not_ready": [],
         "not_joined": [
           "ReportsDB"
-        ]
+        ],
+        "not_ready": [],
+        "replica": "SQLDR02"
       }
     },
     {
+      "rank": 20,
+      "key": "querystore|Query Store regression in PayrollDB: query # (usp_PayRunTotals), #x slower|PayrollDB|4412",
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower",
       "severity": "medium",
@@ -532,6 +572,8 @@
       }
     },
     {
+      "rank": 21,
+      "key": "waits|Wait: LCK_M_X|LCK_M_X",
       "check": "waits",
       "title": "Wait: LCK_M_X",
       "severity": "medium",
@@ -550,15 +592,17 @@
         "Check for open transactions left by the application."
       ],
       "data": {
-        "wait_type": "LCK_M_X",
         "category": "locking",
-        "wait_ms": 92000,
-        "tasks": 14,
+        "share_pct": 42.2,
         "signal_ms": 3,
-        "share_pct": 42.2
+        "tasks": 14,
+        "wait_ms": 92000,
+        "wait_type": "LCK_M_X"
       }
     },
     {
+      "rank": 22,
+      "key": "blocking|Blocking: spid # is blocking # session(s)|93",
       "check": "blocking",
       "title": "Blocking: spid 93 is blocking 1 session(s)",
       "severity": "medium",
@@ -578,15 +622,17 @@
         "Find out why spid 93 is not finishing; KILL is the last resort."
       ],
       "data": {
-        "head_session_id": 93,
         "databases": [
           "PayrollDB"
         ],
-        "victims": 1,
-        "longest_wait_s": 6.0
+        "head_session_id": 93,
+        "longest_wait_s": 6.0,
+        "victims": 1
       }
     },
     {
+      "rank": 23,
+      "key": "agent|# enabled job(s) have missed their schedule",
       "check": "agent",
       "title": "2 enabled job(s) have missed their schedule",
       "severity": "medium",
@@ -602,14 +648,16 @@
         "Check that the Agent was running at those times and that the jobs are not stuck from an earlier run."
       ],
       "data": {
-        "overdue": 2,
         "jobs": [
           "Stats Refresh - Hourly",
           "Purge Old Audit Rows"
-        ]
+        ],
+        "overdue": 2
       }
     },
     {
+      "rank": 24,
+      "key": "querystore|Forced plan failing in PayrollDB: plan # for query # (ad hoc query)|PayrollDB|71",
       "check": "querystore",
       "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
       "severity": "medium",
@@ -626,12 +674,14 @@
       ],
       "data": {
         "database": "PayrollDB",
-        "plan_id": 71,
         "failures": 3,
+        "plan_id": 71,
         "reason": "GENERAL_FAILURE"
       }
     },
     {
+      "rank": 25,
+      "key": "counters|#% of batches compiled a plan",
       "check": "counters",
       "title": "36% of batches compiled a plan",
       "severity": "medium",
@@ -647,11 +697,13 @@
         "A high recompilation rate points at temp tables, statistics updates or SET options changing."
       ],
       "data": {
-        "compile_ratio": 0.357,
-        "batches_per_second": 420.0
+        "batches_per_second": 420.0,
+        "compile_ratio": 0.357
       }
     },
     {
+      "rank": 26,
+      "key": "querystore|Query Store regression in PayrollDB: query # (ad hoc query), #x slower|PayrollDB|5120",
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
       "severity": "medium",
@@ -676,6 +728,8 @@
       }
     },
     {
+      "rank": 27,
+      "key": "querystore|Query Store in ReportsDB is not healthy|ReportsDB",
       "check": "querystore",
       "title": "Query Store in ReportsDB is not healthy",
       "severity": "medium",
@@ -696,6 +750,8 @@
       }
     },
     {
+      "rank": 28,
+      "key": "vlf|Log backups: PayrollDB last one was #h#m ago|PayrollDB",
       "check": "vlf",
       "title": "Log backups: PayrollDB last one was 1h10m ago",
       "severity": "medium",
@@ -713,11 +769,13 @@
       ],
       "data": {
         "database": "PayrollDB",
-        "minutes_since_log_backup": 70,
-        "log_since_backup_mb": 41200.0
+        "log_since_backup_mb": 41200.0,
+        "minutes_since_log_backup": 70
       }
     },
     {
+      "rank": 29,
+      "key": "pvs|Persistent version store in PayrollDB is # GB|PayrollDB",
       "check": "pvs",
       "title": "Persistent version store in PayrollDB is 31 GB",
       "severity": "medium",
@@ -741,6 +799,8 @@
       }
     },
     {
+      "rank": 30,
+      "key": "agent|Agent job running long: Purge Old Audit Rows (#h#m)|Purge Old Audit Rows",
       "check": "agent",
       "title": "Agent job running long: Purge Old Audit Rows (2h00m)",
       "severity": "medium",
@@ -761,6 +821,8 @@
       }
     },
     {
+      "rank": 31,
+      "key": "waits|Wait: PAGELATCH_UP|PAGELATCH_UP",
       "check": "waits",
       "title": "Wait: PAGELATCH_UP",
       "severity": "low",
@@ -779,15 +841,17 @@
         "In a user database look for last-page insert hot spots."
       ],
       "data": {
-        "wait_type": "PAGELATCH_UP",
         "category": "latch",
-        "wait_ms": 38000,
-        "tasks": 5200,
+        "share_pct": 17.4,
         "signal_ms": 900,
-        "share_pct": 17.4
+        "tasks": 5200,
+        "wait_ms": 38000,
+        "wait_type": "PAGELATCH_UP"
       }
     },
     {
+      "rank": 32,
+      "key": "agent|Agent job failed: Nightly ETL Load (#x in #h)|Nightly ETL Load",
       "check": "agent",
       "title": "Agent job failed: Nightly ETL Load (1x in 24h)",
       "severity": "low",
@@ -805,12 +869,14 @@
         "The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats."
       ],
       "data": {
-        "job": "Nightly ETL Load",
         "failures": 1,
+        "job": "Nightly ETL Load",
         "window_hours": 24
       }
     },
     {
+      "rank": 33,
+      "key": "waits|Wait: WRITELOG|WRITELOG",
       "check": "waits",
       "title": "Wait: WRITELOG",
       "severity": "low",
@@ -828,15 +894,17 @@
         "Look for many tiny autocommit transactions that could be batched."
       ],
       "data": {
-        "wait_type": "WRITELOG",
         "category": "log",
-        "wait_ms": 14500,
-        "tasks": 8200,
+        "share_pct": 6.6,
         "signal_ms": 1200,
-        "share_pct": 6.6
+        "tasks": 8200,
+        "wait_ms": 14500,
+        "wait_type": "WRITELOG"
       }
     },
     {
+      "rank": 34,
+      "key": "waits|Wait: LCK_M_S|LCK_M_S",
       "check": "waits",
       "title": "Wait: LCK_M_S",
       "severity": "low",
@@ -855,15 +923,17 @@
         "Check for open transactions left by the application."
       ],
       "data": {
-        "wait_type": "LCK_M_S",
         "category": "locking",
-        "wait_ms": 21000,
-        "tasks": 6,
+        "share_pct": 9.6,
         "signal_ms": 1,
-        "share_pct": 9.6
+        "tasks": 6,
+        "wait_ms": 21000,
+        "wait_type": "LCK_M_S"
       }
     },
     {
+      "rank": 35,
+      "key": "memory|max server memory is not set on a # GB host",
       "check": "memory",
       "title": "max server memory is not set on a 64 GB host",
       "severity": "low",
@@ -883,6 +953,8 @@
       }
     },
     {
+      "rank": 36,
+      "key": "waits|Wait: HADR_SYNC_COMMIT|HADR_SYNC_COMMIT",
       "check": "waits",
       "title": "Wait: HADR_SYNC_COMMIT",
       "severity": "low",
@@ -901,15 +973,17 @@
         "See the availability group section of this report."
       ],
       "data": {
-        "wait_type": "HADR_SYNC_COMMIT",
         "category": "ag",
-        "wait_ms": 16000,
-        "tasks": 7600,
+        "share_pct": 7.3,
         "signal_ms": 400,
-        "share_pct": 7.3
+        "tasks": 7600,
+        "wait_ms": 16000,
+        "wait_type": "HADR_SYNC_COMMIT"
       }
     },
     {
+      "rank": 37,
+      "key": "memory|Page life expectancy is # seconds",
       "check": "memory",
       "title": "Page life expectancy is 180 seconds",
       "severity": "low",
@@ -928,6 +1002,8 @@
       }
     },
     {
+      "rank": 38,
+      "key": "vlf|Log: Staging has # VLFs|Staging",
       "check": "vlf",
       "title": "Log: Staging has 640 VLFs",
       "severity": "low",
@@ -943,12 +1019,14 @@
       ],
       "data": {
         "database": "Staging",
-        "vlf_count": 640,
         "log_reuse_wait": "NOTHING",
-        "recovery_model": "SIMPLE"
+        "recovery_model": "SIMPLE",
+        "vlf_count": 640
       }
     },
     {
+      "rank": 39,
+      "key": "counters|Workload during the sample: # batch requests/s",
       "check": "counters",
       "title": "Workload during the sample: 420 batch requests/s",
       "severity": "info",

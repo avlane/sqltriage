@@ -65,6 +65,32 @@ class JsonTests(unittest.TestCase):
         self.assertEqual(data["findings"][0]["severity"], "high")
         self.assertEqual(data["findings"][1]["severity"], "medium")
         self.assertEqual(data["summary"], {"critical": 0, "high": 1, "medium": 1, "low": 0, "info": 0})
+        self.assertEqual([f["rank"] for f in data["findings"]], [1, 2])
+        self.assertEqual(data["findings"][1]["key"], "vlf|Log: Sales has # VLFs")
+
+    def test_data_keys_are_sorted_so_reports_diff_cleanly(self):
+        finding = Finding("vlf", "Log: Sales", 50, data={"zeta": 1, "alpha": 2, "mid": 3})
+        data = json.loads(to_json(Report("S", [finding], [], WHEN)))
+        self.assertEqual(list(data["findings"][0]["data"]), ["alpha", "mid", "zeta"])
+
+    def test_the_key_matches_what_a_baseline_would_compute(self):
+        from sqltriage import baseline
+
+        report = sample_report()
+        data = json.loads(to_json(report))
+        self.assertEqual([f["key"] for f in data["findings"]], [baseline.key_of(f) for f in report.findings])
+
+    def test_an_older_schema_version_still_works_as_a_baseline(self):
+        import os
+        import tempfile
+
+        from sqltriage import baseline
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "old.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump({"schema_version": 1, "findings": [{"check": "vlf", "title": "Log: Sales", "score": 40}]}, handle)
+            self.assertEqual(baseline.load(path)["vlf|Log: Sales"]["score"], 40)
         self.assertEqual(to_dict(sample_report())["errors"], [])
 
 

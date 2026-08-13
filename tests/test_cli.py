@@ -37,7 +37,7 @@ class CliTests(unittest.TestCase):
     def test_json_has_schema_and_instance(self):
         _, text = self.run_cli("-f", "json", "--only", "vlf")
         data = json.loads(text)
-        self.assertEqual(data["schema_version"], 1)
+        self.assertEqual(data["schema_version"], 2)
         self.assertEqual(data["instance"]["product_name"], "SQL Server 2019")
 
     def test_text_header_names_the_version(self):
@@ -119,7 +119,7 @@ class CliTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()):
                 self.run_cli("--only", "vlf", "-o", path, "-f", "json")
             with open(path, encoding="utf-8") as handle:
-                self.assertEqual(json.load(handle)["schema_version"], 1)
+                self.assertEqual(json.load(handle)["schema_version"], 2)
 
     def test_choose_format(self):
         from sqltriage.cli import choose_format

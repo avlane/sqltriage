@@ -3,4 +3,4 @@
 __version__ = "0.6.0"
 
 # Bumped when the JSON report layout changes in a way a reader would notice.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
