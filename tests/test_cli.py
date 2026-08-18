@@ -202,7 +202,7 @@ class CliTests(unittest.TestCase):
         def edit(data):
             data["findings"] = [f for f in data["findings"] if f["check"] != "memory"]
             for f in data["findings"]:
-                if f["check"] == "cpu":
+                if f["title"].startswith("CPU scheduler pressure"):
                     f["score"] -= 30
 
         with tempfile.TemporaryDirectory() as tmp:

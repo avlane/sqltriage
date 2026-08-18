@@ -122,9 +122,11 @@ info below that. Related findings are linked and the symptom scored down by
 
 ## `cpu`
 
-- **Reads:** `sys.dm_os_schedulers`, the wait sample for signal waits, and
-  `sys.dm_exec_requests` for the heaviest running requests.
+- **Reads:** `sys.dm_os_schedulers`, the wait sample for signal waits,
+  `sys.dm_exec_requests` for the heaviest running requests, and
+  `sys.dm_os_ring_buffers` with `sys.dm_os_sys_info` for CPU use over the last ten minutes.
 - **Reports:** the runnable queue per scheduler and signal waits (which only count when
-  tasks are really queueing), one scheduler far busier than the rest, and the requests
-  using the most CPU.
+  tasks are really queueing), one scheduler far busier than the rest, the requests
+  using the most CPU, and, from the scheduler monitor ring buffer, whether SQL Server
+  or some other process on the host is using the CPU.
 - **Needs:** VIEW SERVER STATE.

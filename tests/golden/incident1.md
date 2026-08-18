@@ -4,7 +4,7 @@ _Generated 2023-03-14 10:00:00_
 
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
 
-**39 finding(s):** 2 critical, 15 high, 13 medium, 8 low, 1 info
+**40 finding(s):** 2 critical, 15 high, 14 medium, 8 low, 1 info
 
 | # | Severity | Score | Finding |
 |---|----------|-------|---------|
@@ -27,26 +27,27 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 17 | high | 65 | tempdb file layout: 4 data file(s), sizes not even |
 | 18 | medium | 60 | Log: ReportsDB has 2,300 VLFs and log reuse wait LOG_BACKUP |
 | 19 | medium | 60 | Availability group PayrollAG: failover to SQLDR02 is not ready |
-| 20 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
-| 21 | medium | 56 | Wait: LCK_M_X |
-| 22 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
-| 23 | medium | 46 | 2 enabled job(s) have missed their schedule |
-| 24 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
-| 25 | medium | 44 | 36% of batches compiled a plan |
-| 26 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
-| 27 | medium | 40 | Query Store in ReportsDB is not healthy |
-| 28 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
-| 29 | medium | 40 | Persistent version store in PayrollDB is 31 GB |
-| 30 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 31 | low | 35 | Wait: PAGELATCH_UP |
-| 32 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
-| 33 | low | 33 | Wait: WRITELOG |
-| 34 | low | 31 | Wait: LCK_M_S |
-| 35 | low | 30 | max server memory is not set on a 64 GB host |
-| 36 | low | 28 | Wait: HADR_SYNC_COMMIT |
-| 37 | low | 25 | Page life expectancy is 180 seconds |
-| 38 | low | 20 | Log: Staging has 640 VLFs |
-| 39 | info | 5 | Workload during the sample: 420 batch requests/s |
+| 20 | medium | 59 | Something other than SQL Server is using 30% of the CPU |
+| 21 | medium | 58 | Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower |
+| 22 | medium | 56 | Wait: LCK_M_X |
+| 23 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
+| 24 | medium | 46 | 2 enabled job(s) have missed their schedule |
+| 25 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
+| 26 | medium | 44 | 36% of batches compiled a plan |
+| 27 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
+| 28 | medium | 40 | Query Store in ReportsDB is not healthy |
+| 29 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
+| 30 | medium | 40 | Persistent version store in PayrollDB is 31 GB |
+| 31 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 32 | low | 35 | Wait: PAGELATCH_UP |
+| 33 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
+| 34 | low | 33 | Wait: WRITELOG |
+| 35 | low | 31 | Wait: LCK_M_S |
+| 36 | low | 30 | max server memory is not set on a 64 GB host |
+| 37 | low | 28 | Wait: HADR_SYNC_COMMIT |
+| 38 | low | 25 | Page life expectancy is 180 seconds |
+| 39 | low | 20 | Log: Staging has 640 VLFs |
+| 40 | info | 5 | Workload during the sample: 420 batch requests/s |
 
 **1. Blocking: spid 57 is blocking 6 session(s)** (critical, 95)
 
@@ -169,6 +170,7 @@ Tasks are waiting for CPU time.
 - signal waits are 6.8% of non-idle wait time (15% or more is a concern)
 - 2 scheduler(s) have tasks queued for a worker (work_queue_count > 0)
 - 2 scheduler(s) are VISIBLE OFFLINE: check edition core limits and affinity
+- last 10 minutes: SQL Server 58%, other processes 30%, idle 12%
 - spid 112 rpt_reader@ReportsDB used 1h10m of CPU in 10m (dop 8, running): SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre
 - spid 98 svc_payroll@PayrollDB used 14m of CPU in 0m (dop 1, runnable): SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId
 - spid 133 svc_payroll@PayrollDB used 2m of CPU in 0m (dop 1, runnable): UPDATE dbo.PayRunStaging SET Validated = 1 WHERE PayRunId = @p0
@@ -278,7 +280,16 @@ Next steps:
 Next steps:
 1. Resume data movement and wait for the databases to reach SYNCHRONIZED before relying on this replica.
 
-**20. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
+**20. Something other than SQL Server is using 30% of the CPU** (medium, 59)
+
+SQL Server is being starved of CPU by another process on the host.
+
+- averaged over the last 10 minutes: SQL Server 58%, other processes 30%, idle 12%
+
+Next steps:
+1. Find what else runs on the host: antivirus scans, backups agents, another SQL Server instance, monitoring.
+
+**21. Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower** (medium, 58)
 
 - average duration 1950 ms now against 510 ms before (3.8x slower)
 - 420 execution(s) recently, 9000 in the baseline window; about 605s lost
@@ -292,7 +303,7 @@ Next steps:
 1. Run: exec sp_query_store_force_plan 4412, 91;
 1. In Query Store, compare the plans for query 4412 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**21. Wait: LCK_M_X** (medium, 56)
+**22. Wait: LCK_M_X** (medium, 56)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -305,7 +316,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**22. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
+**23. Blocking: spid 93 is blocking 1 session(s)** (medium, 49)
 
 Longest wait 6s.
 
@@ -321,7 +332,7 @@ spid 93 [sleeping] CORP\jmendez@LAPTOP-JM07 open_tran=1  <- head blocker
 Next steps:
 1. Find out why spid 93 is not finishing; KILL is the last resort.
 
-**23. 2 enabled job(s) have missed their schedule** (medium, 46)
+**24. 2 enabled job(s) have missed their schedule** (medium, 46)
 
 Their next run time is more than 45 minutes in the past.
 
@@ -331,7 +342,7 @@ Their next run time is more than 45 minutes in the past.
 Next steps:
 1. Check that the Agent was running at those times and that the jobs are not stuck from an earlier run.
 
-**24. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
+**25. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
 
 A plan has been forced for this query but the optimizer keeps failing to use it.
 
@@ -341,7 +352,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 Next steps:
 1. Look in the error log and extended events for the failure; unforce if it persists.
 
-**25. 36% of batches compiled a plan** (medium, 44)
+**26. 36% of batches compiled a plan** (medium, 44)
 
 Compiling is CPU heavy and takes plan cache memory: plans are not being reused.
 
@@ -351,7 +362,7 @@ Next steps:
 1. Look for ad hoc statements with literals (forced parameterization, or optimize for ad hoc workloads).
 1. A high recompilation rate points at temp tables, statistics updates or SET options changing.
 
-**26. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
+**27. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
 
 - average duration 24 ms now against 10 ms before (2.4x slower)
 - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
@@ -361,7 +372,7 @@ Next steps:
 Next steps:
 1. In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**27. Query Store in ReportsDB is not healthy** (medium, 40)
+**28. Query Store in ReportsDB is not healthy** (medium, 40)
 
 While Query Store is not collecting, the regression figures for this database go stale.
 
@@ -370,7 +381,7 @@ While Query Store is not collecting, the regression figures for this database go
 Next steps:
 1. Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
 
-**28. Log backups: PayrollDB last one was 1h10m ago** (medium, 40)
+**29. Log backups: PayrollDB last one was 1h10m ago** (medium, 40)
 
 - last log backup 1h10m ago
 - 41,200 MB of log since then, 67% of the 61,440 MB log
@@ -379,7 +390,7 @@ Next steps:
 Next steps:
 1. Check the log backup job (see the Agent section) and the backup target.
 
-**29. Persistent version store in PayrollDB is 31 GB** (medium, 40)
+**30. Persistent version store in PayrollDB is 31 GB** (medium, 40)
 
 Row versions are piling up in the database because old transactions keep them alive.
 
@@ -391,7 +402,7 @@ Next steps:
 1. Find and finish that transaction: see the blocking section for sessions with open transactions.
 1. Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up.
 
-**30. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**31. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -399,7 +410,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**31. Wait: PAGELATCH_UP** (low, 35)
+**32. Wait: PAGELATCH_UP** (low, 35)
 
 Contention on a data page that is already in memory.
 
@@ -412,7 +423,7 @@ Next steps:
 1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
 1. In a user database look for last-page insert hot spots.
 
-**32. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
+**33. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
 - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
 - ran for 4540s before failing
@@ -422,7 +433,7 @@ Next steps:
 Next steps:
 1. The step was a deadlock victim; it is safe to rerun, but find the deadlock if it repeats.
 
-**33. Wait: WRITELOG** (low, 33)
+**34. Wait: WRITELOG** (low, 33)
 
 Sessions are waiting for commit log blocks to be hardened to disk.
 
@@ -434,7 +445,7 @@ Next steps:
 1. Check write latency on the log file (sys.dm_io_virtual_file_stats).
 1. Look for many tiny autocommit transactions that could be batched.
 
-**34. Wait: LCK_M_S** (low, 31)
+**35. Wait: LCK_M_S** (low, 31)
 
 Sessions are blocked waiting for a lock held by someone else.
 
@@ -447,7 +458,7 @@ Next steps:
 1. Look at the blocking section for the head blocker.
 1. Check for open transactions left by the application.
 
-**35. max server memory is not set on a 64 GB host** (low, 30)
+**36. max server memory is not set on a 64 GB host** (low, 30)
 
 SQL Server will grow until the OS has to push back, which is a bad time to find out.
 
@@ -456,7 +467,7 @@ SQL Server will grow until the OS has to push back, which is a bad time to find 
 Next steps:
 1. Set it to leave several GB (more on big hosts) for the OS and anything else running there.
 
-**36. Wait: HADR_SYNC_COMMIT** (low, 28)
+**37. Wait: HADR_SYNC_COMMIT** (low, 28)
 
 Commits on the primary wait for a synchronous secondary to harden the log.
 
@@ -469,7 +480,7 @@ Next steps:
 1. Check log send queue, network latency and secondary log write latency.
 1. See the availability group section of this report.
 
-**37. Page life expectancy is 180 seconds** (low, 25)
+**38. Page life expectancy is 180 seconds** (low, 25)
 
 Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop matters more than the number.
 
@@ -478,13 +489,13 @@ Pages are leaving the buffer pool quickly, so reads go to disk. A sudden drop ma
 Next steps:
 1. Look for a scan that churned the cache (see PAGEIOLATCH waits) before adding memory.
 
-**38. Log: Staging has 640 VLFs** (low, 20)
+**39. Log: Staging has 640 VLFs** (low, 20)
 
 - 640 VLFs in 6,144 MB of log (12 active)
 
 Next steps:
 1. Shrink the log once and regrow it in a few large steps to rebuild the VLFs.
 
-**39. Workload during the sample: 420 batch requests/s** (info, 5)
+**40. Workload during the sample: 420 batch requests/s** (info, 5)
 
 - 150 compilations/s, 12 recompilations/s, 1.4 lock waits/s

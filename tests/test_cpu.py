@@ -8,6 +8,12 @@ from sqltriage.source import FixtureSource, SourceError
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "incident1")
 
 
+def pressure(findings):
+    """The runnable queue finding among whatever else the cpu check returned."""
+    (found,) = [f for f in findings if f.title.startswith("CPU scheduler pressure")]
+    return found
+
+
 def ctx():
     return Context(FixtureSource(FIXTURES), interval=10, sleep=lambda s: None)
 
@@ -53,8 +59,66 @@ class TopRequestsTests(unittest.TestCase):
         self.assertEqual(cpu.top_requests(Context(Denied(FIXTURES))), [])
 
     def test_pressure_finding_includes_them(self):
-        (finding,) = cpu.run(ctx())
+        finding = pressure(cpu.run(ctx()))
         self.assertTrue(any(e.startswith("spid 112 ") for e in finding.evidence))
+
+
+def history_rows(pairs):
+    return [{"event_time": "t%d" % i, "sql_cpu_pct": sql, "system_idle_pct": idle} for i, (sql, idle) in enumerate(pairs)]
+
+
+class HistoryTests(unittest.TestCase):
+    def serve(self, rows):
+        class Fake(FixtureSource):
+            def fetch(inner, name, sql, params=(), database=None):
+                if name == "cpu_history":
+                    return rows
+                raise SourceError("not here")
+
+        return Context(Fake(FIXTURES))
+
+    def test_averages(self):
+        sql, other, idle, minutes = cpu.history(self.serve(history_rows([(60, 30), (80, 10)])))
+        self.assertEqual((sql, round(other, 1), idle, minutes), (70.0, 10.0, 20.0, 2))
+
+    def test_rows_with_missing_values_are_skipped(self):
+        rows = history_rows([(60, 30)]) + [{"event_time": "x", "sql_cpu_pct": None, "system_idle_pct": 5}]
+        self.assertEqual(cpu.history(self.serve(rows))[3], 1)
+
+    def test_no_rows_or_no_access(self):
+        self.assertIsNone(cpu.history(self.serve([])))
+        self.assertIsNone(cpu.history(Context(FixtureSource("/nonexistent"))))
+
+    def test_sql_server_busy(self):
+        (finding,) = cpu.history_findings((90.0, 4.0, 6.0, 10))
+        self.assertEqual(finding.title, "SQL Server is using 90% of the CPU")
+        self.assertEqual(finding.score, 70)
+        self.assertEqual(finding.evidence, ["averaged over the last 10 minutes: SQL Server 90%, other processes 4%, idle 6%"])
+
+    def test_something_else_busy(self):
+        (finding,) = cpu.history_findings((40.0, 50.0, 10.0, 10))
+        self.assertEqual(finding.title, "Something other than SQL Server is using 50% of the CPU")
+        self.assertEqual(finding.score, 70)
+
+    def test_both(self):
+        self.assertEqual(len(cpu.history_findings((82.0, 26.0, 0.0, 10))), 2)
+
+    def test_quiet(self):
+        self.assertEqual(cpu.history_findings((12.0, 3.0, 85.0, 10)), [])
+        self.assertEqual(cpu.history_findings(None), [])
+
+    def test_scores_are_capped(self):
+        (finding,) = cpu.history_findings((100.0, 0.0, 0.0, 10))
+        self.assertEqual(finding.score, 85)
+
+    def test_the_pressure_finding_quotes_the_history(self):
+        finding = [f for f in cpu.run(ctx()) if "runnable queue" in f.title][0]
+        self.assertTrue(any(e.startswith("last 10 minutes: SQL Server 58%, other processes 30%, idle 12%") for e in finding.evidence))
+
+    def test_incident_flags_the_other_process(self):
+        titles = [f.title for f in cpu.run(ctx())]
+        self.assertIn("Something other than SQL Server is using 30% of the CPU", titles)
+        self.assertNotIn("SQL Server is using 58% of the CPU", titles)
 
 
 class QuietSignalTests(unittest.TestCase):
@@ -89,8 +153,7 @@ class SignalTrendTests(unittest.TestCase):
         c = ctx()
         c.cache["waits"] = self.deltas(pcts[-1])
         c.cache["waits_deltas"] = [self.deltas(p) for p in pcts]
-        (finding,) = cpu.run(c)
-        return finding
+        return pressure(cpu.run(c))
 
     def test_trend_line(self):
         finding = self.run_with([10, 20, 40])
@@ -141,12 +204,12 @@ class ImbalanceTests(unittest.TestCase):
         self.assertTrue(titles[0].startswith("CPU imbalance"))
 
     def test_incident_has_none(self):
-        self.assertEqual(len(cpu.run(ctx())), 1)
+        self.assertFalse(any(f.title.startswith("CPU imbalance") for f in cpu.run(ctx())))
 
 
 class RunTests(unittest.TestCase):
     def test_incident(self):
-        (finding,) = cpu.run(ctx())
+        finding = pressure(cpu.run(ctx()))
         self.assertEqual(finding.data["online_schedulers"], 16)
         self.assertEqual(finding.data["avg_runnable"], 3.62)
         self.assertEqual(finding.score, 75)
@@ -170,7 +233,7 @@ class RunTests(unittest.TestCase):
 
         c = Context(Idle(FIXTURES), sleep=lambda s: None)
         c.cache["waits"] = []
-        (finding,) = cpu.run(c)
+        finding = pressure(cpu.run(c))
         self.assertEqual(finding.score, 0)
 
 

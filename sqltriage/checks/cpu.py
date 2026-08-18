@@ -58,6 +58,24 @@ ORDER BY r.cpu_time DESC;"""
 
 STATEMENT_LIMIT = 160
 
+# The scheduler monitor writes one record a minute with the CPU use of the SQL
+# Server process and how idle the whole machine was.  The ring buffer's
+# timestamp is in milliseconds of uptime, hence the arithmetic against ms_ticks.
+HISTORY_SQL = """\
+SELECT TOP (10)
+       DATEADD(MILLISECOND, x.timestamp - si.ms_ticks, SYSDATETIME()) AS event_time,
+       x.record.value('(./Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]', 'int') AS sql_cpu_pct,
+       x.record.value('(./Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS system_idle_pct
+FROM (SELECT timestamp, CONVERT(xml, record) AS record
+      FROM sys.dm_os_ring_buffers
+      WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR'
+        AND record LIKE N'%<SystemHealth>%') AS x
+CROSS JOIN sys.dm_os_sys_info AS si
+ORDER BY x.timestamp DESC;"""
+
+SQL_BUSY_PCT = 80      # SQL Server using this much of the machine's CPU on average
+OTHER_BUSY_PCT = 25    # everything else using this much
+
 # (average runnable tasks per scheduler at or above, score)
 RUNNABLE_LEVELS = [(5, 85), (3, 70), (2, 55), (1, 40)]
 # (signal wait percentage at or above, score)
@@ -101,6 +119,52 @@ def imbalance_finding(online):
         ],
         data={"scheduler_id": hottest["scheduler_id"], "runnable": peak, "median": median},
     )
+
+
+def history(ctx):
+    """(sql %, other %, idle %) averaged over the minutes the ring buffer holds, or None."""
+    try:
+        rows = ctx.source.fetch("cpu_history", HISTORY_SQL)
+    except SourceError:
+        return None
+    rows = [r for r in rows if r.get("sql_cpu_pct") is not None and r.get("system_idle_pct") is not None]
+    if not rows:
+        return None
+    sql = sum(r["sql_cpu_pct"] for r in rows) / float(len(rows))
+    idle = sum(r["system_idle_pct"] for r in rows) / float(len(rows))
+    return sql, max(0.0, 100.0 - sql - idle), idle, len(rows)
+
+
+def history_findings(usage):
+    """Findings for SQL Server using most of the machine, or something else doing so."""
+    if usage is None:
+        return []
+    sql, other, idle, minutes = usage
+    findings = []
+    if sql >= SQL_BUSY_PCT:
+        findings.append(
+            Finding(
+                check=NAME,
+                title="SQL Server is using {:.0f}% of the CPU".format(sql),
+                score=int(min(85, 50 + (sql - SQL_BUSY_PCT) * 2)),
+                evidence=["averaged over the last {} minutes: SQL Server {:.0f}%, other processes {:.0f}%, idle {:.0f}%".format(minutes, sql, other, idle)],
+                advice=["Find the top CPU consumers (sys.dm_exec_query_stats or Query Store); see the heaviest requests above."],
+                data={"sql_cpu_pct": round(sql, 1), "other_cpu_pct": round(other, 1)},
+            )
+        )
+    if other >= OTHER_BUSY_PCT:
+        findings.append(
+            Finding(
+                check=NAME,
+                title="Something other than SQL Server is using {:.0f}% of the CPU".format(other),
+                score=int(min(80, 45 + other / 2.0)),
+                detail="SQL Server is being starved of CPU by another process on the host.",
+                evidence=["averaged over the last {} minutes: SQL Server {:.0f}%, other processes {:.0f}%, idle {:.0f}%".format(minutes, sql, other, idle)],
+                advice=["Find what else runs on the host: antivirus scans, backups agents, another SQL Server instance, monitoring."],
+                data={"sql_cpu_pct": round(sql, 1), "other_cpu_pct": round(other, 1)},
+            )
+        )
+    return findings
 
 
 def top_requests(ctx):
@@ -174,8 +238,13 @@ def run(ctx):
         evidence.append(
             "{} scheduler(s) are VISIBLE OFFLINE: check edition core limits and affinity".format(len(offline))
         )
-    extra = imbalance_finding(online)
-    extra = [extra] if extra else []
+    usage = history(ctx)
+    extra = history_findings(usage)
+    imbalance = imbalance_finding(online)
+    if imbalance:
+        extra.append(imbalance)
+    if usage and score:
+        evidence.append("last {} minutes: SQL Server {:.0f}%, other processes {:.0f}%, idle {:.0f}%".format(usage[3], usage[0], usage[1], usage[2]))
     if not score:
         return [Finding(NAME, "CPU scheduler pressure: none seen", 0, evidence=evidence)] + extra
     evidence.extend(top_requests(ctx))

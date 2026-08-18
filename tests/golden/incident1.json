@@ -17,7 +17,7 @@
   "summary": {
     "critical": 2,
     "high": 15,
-    "medium": 13,
+    "medium": 14,
     "low": 8,
     "info": 1
   },
@@ -279,6 +279,7 @@
         "signal waits are 6.8% of non-idle wait time (15% or more is a concern)",
         "2 scheduler(s) have tasks queued for a worker (work_queue_count > 0)",
         "2 scheduler(s) are VISIBLE OFFLINE: check edition core limits and affinity",
+        "last 10 minutes: SQL Server 58%, other processes 30%, idle 12%",
         "spid 112 rpt_reader@ReportsDB used 1h10m of CPU in 10m (dop 8, running): SELECT c.CostCentre, SUM(l.Amount) FROM dbo.PayRunLine l JOIN dbo.CostCentre c ON c.CostCentreId = l.CostCentreId GROUP BY c.CostCentre",
         "spid 98 svc_payroll@PayrollDB used 14m of CPU in 0m (dop 1, runnable): SELECT pr.PayRunId, SUM(l.Amount) AS NetTotal FROM dbo.PayRun pr JOIN dbo.PayRunLine l ON l.PayRunId = pr.PayRunId WHERE pr.PayRunId = @p0 GROUP BY pr.PayRunId",
         "spid 133 svc_payroll@PayrollDB used 2m of CPU in 0m (dop 1, runnable): UPDATE dbo.PayRunStaging SET Validated = 1 WHERE PayRunId = @p0"
@@ -543,6 +544,27 @@
     },
     {
       "rank": 20,
+      "key": "cpu|Something other than SQL Server is using #% of the CPU",
+      "check": "cpu",
+      "title": "Something other than SQL Server is using 30% of the CPU",
+      "severity": "medium",
+      "score": 59,
+      "change": null,
+      "detail": "SQL Server is being starved of CPU by another process on the host.",
+      "block": [],
+      "evidence": [
+        "averaged over the last 10 minutes: SQL Server 58%, other processes 30%, idle 12%"
+      ],
+      "advice": [
+        "Find what else runs on the host: antivirus scans, backups agents, another SQL Server instance, monitoring."
+      ],
+      "data": {
+        "other_cpu_pct": 29.6,
+        "sql_cpu_pct": 58.3
+      }
+    },
+    {
+      "rank": 21,
       "key": "querystore|Query Store regression in PayrollDB: query # (usp_PayRunTotals), #x slower|PayrollDB|4412",
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 4412 (usp_PayRunTotals), 3.8x slower",
@@ -572,7 +594,7 @@
       }
     },
     {
-      "rank": 21,
+      "rank": 22,
       "key": "waits|Wait: LCK_M_X|LCK_M_X",
       "check": "waits",
       "title": "Wait: LCK_M_X",
@@ -601,7 +623,7 @@
       }
     },
     {
-      "rank": 22,
+      "rank": 23,
       "key": "blocking|Blocking: spid # is blocking # session(s)|93",
       "check": "blocking",
       "title": "Blocking: spid 93 is blocking 1 session(s)",
@@ -631,7 +653,7 @@
       }
     },
     {
-      "rank": 23,
+      "rank": 24,
       "key": "agent|# enabled job(s) have missed their schedule",
       "check": "agent",
       "title": "2 enabled job(s) have missed their schedule",
@@ -656,7 +678,7 @@
       }
     },
     {
-      "rank": 24,
+      "rank": 25,
       "key": "querystore|Forced plan failing in PayrollDB: plan # for query # (ad hoc query)|PayrollDB|71",
       "check": "querystore",
       "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
@@ -680,7 +702,7 @@
       }
     },
     {
-      "rank": 25,
+      "rank": 26,
       "key": "counters|#% of batches compiled a plan",
       "check": "counters",
       "title": "36% of batches compiled a plan",
@@ -702,7 +724,7 @@
       }
     },
     {
-      "rank": 26,
+      "rank": 27,
       "key": "querystore|Query Store regression in PayrollDB: query # (ad hoc query), #x slower|PayrollDB|5120",
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
@@ -728,7 +750,7 @@
       }
     },
     {
-      "rank": 27,
+      "rank": 28,
       "key": "querystore|Query Store in ReportsDB is not healthy|ReportsDB",
       "check": "querystore",
       "title": "Query Store in ReportsDB is not healthy",
@@ -750,7 +772,7 @@
       }
     },
     {
-      "rank": 28,
+      "rank": 29,
       "key": "vlf|Log backups: PayrollDB last one was #h#m ago|PayrollDB",
       "check": "vlf",
       "title": "Log backups: PayrollDB last one was 1h10m ago",
@@ -774,7 +796,7 @@
       }
     },
     {
-      "rank": 29,
+      "rank": 30,
       "key": "pvs|Persistent version store in PayrollDB is # GB|PayrollDB",
       "check": "pvs",
       "title": "Persistent version store in PayrollDB is 31 GB",
@@ -799,7 +821,7 @@
       }
     },
     {
-      "rank": 30,
+      "rank": 31,
       "key": "agent|Agent job running long: Purge Old Audit Rows (#h#m)|Purge Old Audit Rows",
       "check": "agent",
       "title": "Agent job running long: Purge Old Audit Rows (2h00m)",
@@ -821,7 +843,7 @@
       }
     },
     {
-      "rank": 31,
+      "rank": 32,
       "key": "waits|Wait: PAGELATCH_UP|PAGELATCH_UP",
       "check": "waits",
       "title": "Wait: PAGELATCH_UP",
@@ -850,7 +872,7 @@
       }
     },
     {
-      "rank": 32,
+      "rank": 33,
       "key": "agent|Agent job failed: Nightly ETL Load (#x in #h)|Nightly ETL Load",
       "check": "agent",
       "title": "Agent job failed: Nightly ETL Load (1x in 24h)",
@@ -875,7 +897,7 @@
       }
     },
     {
-      "rank": 33,
+      "rank": 34,
       "key": "waits|Wait: WRITELOG|WRITELOG",
       "check": "waits",
       "title": "Wait: WRITELOG",
@@ -903,7 +925,7 @@
       }
     },
     {
-      "rank": 34,
+      "rank": 35,
       "key": "waits|Wait: LCK_M_S|LCK_M_S",
       "check": "waits",
       "title": "Wait: LCK_M_S",
@@ -932,7 +954,7 @@
       }
     },
     {
-      "rank": 35,
+      "rank": 36,
       "key": "memory|max server memory is not set on a # GB host",
       "check": "memory",
       "title": "max server memory is not set on a 64 GB host",
@@ -953,7 +975,7 @@
       }
     },
     {
-      "rank": 36,
+      "rank": 37,
       "key": "waits|Wait: HADR_SYNC_COMMIT|HADR_SYNC_COMMIT",
       "check": "waits",
       "title": "Wait: HADR_SYNC_COMMIT",
@@ -982,7 +1004,7 @@
       }
     },
     {
-      "rank": 37,
+      "rank": 38,
       "key": "memory|Page life expectancy is # seconds",
       "check": "memory",
       "title": "Page life expectancy is 180 seconds",
@@ -1002,7 +1024,7 @@
       }
     },
     {
-      "rank": 38,
+      "rank": 39,
       "key": "vlf|Log: Staging has # VLFs|Staging",
       "check": "vlf",
       "title": "Log: Staging has 640 VLFs",
@@ -1025,7 +1047,7 @@
       }
     },
     {
-      "rank": 39,
+      "rank": 40,
       "key": "counters|Workload during the sample: # batch requests/s",
       "check": "counters",
       "title": "Workload during the sample: 420 batch requests/s",
