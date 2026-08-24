@@ -106,9 +106,17 @@ def choose_format(args):
 def write_output(path, text):
     """Write the report next to its final name first, so a reader never sees half of it."""
     temporary = path + ".tmp"
-    with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
-    os.replace(temporary, path)
+    try:
+        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+        os.replace(temporary, path)
+    except BaseException:
+        # a failed write must not leave a stray .tmp behind, or an unreadable half file
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def explain_main(words, out):
@@ -218,7 +226,11 @@ def main(argv=None, out=None):
         report = filter_report(report, args.min_severity)
     text = FORMATS[choose_format(args)](report)
     if args.output:
-        write_output(args.output, text)
+        try:
+            write_output(args.output, text)
+        except OSError as exc:
+            sys.stderr.write("cannot write {}: {}\n".format(args.output, exc.strerror or exc))
+            return 2
         sys.stderr.write("wrote {}\n".format(args.output))
     else:
         out.write(text)

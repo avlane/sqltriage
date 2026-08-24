@@ -111,6 +111,44 @@ class CliTests(unittest.TestCase):
                 self.assertTrue(handle.read().startswith("### sqltriage report"))
             self.assertEqual(os.listdir(tmp), ["report.md"])  # no temporary file left behind
 
+    def test_unwritable_output_is_a_usage_error(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "no", "such", "dir", "report.txt")
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                code, _ = self.run_cli("--only", "vlf", "-o", path)
+        self.assertEqual(code, 2)
+        self.assertIn("cannot write " + path, err.getvalue())
+
+    def test_failed_rename_leaves_no_temporary_file(self):
+        import tempfile
+        import unittest.mock
+
+        from sqltriage.cli import write_output
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "report.txt")
+            with unittest.mock.patch("os.replace", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    write_output(path, "text")
+            self.assertEqual(os.listdir(tmp), [])
+
+    def test_an_existing_report_survives_a_failed_write(self):
+        import tempfile
+        import unittest.mock
+
+        from sqltriage.cli import write_output
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "report.txt")
+            write_output(path, "old report\n")
+            with unittest.mock.patch("os.replace", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    write_output(path, "new report\n")
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "old report\n")
+
     def test_explicit_format_beats_the_extension(self):
         import tempfile
 
