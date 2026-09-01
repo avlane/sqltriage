@@ -9,7 +9,7 @@ import os
 from sqltriage.render import FORMATS
 from tests.golden_support import GOLDEN, incident_report
 
-EXTENSIONS = {"text": "txt", "json": "json", "markdown": "md"}
+EXTENSIONS = {"text": "txt", "json": "json", "markdown": "md", "oneline": "line"}
 
 
 def main():

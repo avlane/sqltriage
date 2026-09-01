@@ -3,7 +3,7 @@ import json
 import unittest
 
 from sqltriage.models import Finding
-from sqltriage.render import to_dict, to_json, to_markdown, to_text
+from sqltriage.render import to_dict, to_json, to_markdown, to_oneline, to_text
 from sqltriage.report import Report
 
 WHEN = datetime.datetime(2023, 4, 12, 20, 0, 0)
@@ -42,6 +42,39 @@ class TextTests(unittest.TestCase):
 
     def test_errors_are_listed(self):
         self.assertIn("  - vlf: boom", to_text(sample_report(["vlf: boom"])))
+
+
+class OnelineTests(unittest.TestCase):
+    def test_summary_and_top_findings(self):
+        line = to_oneline(sample_report())
+        self.assertEqual(
+            line,
+            "SQLPROD01: 1 high, 1 medium. Top: 1) Blocking: spid 57 is blocking 2 session(s) [84]; 2) Log: Sales has 1,200 VLFs [45]\n",
+        )
+
+    def test_only_three_and_long_titles_are_cut(self):
+        findings = [Finding("c", "x" * 200 if i == 0 else "Finding %d" % i, 90 - i) for i in range(6)]
+        line = to_oneline(Report("S", findings, [], WHEN))
+        self.assertEqual(line.count(") "), 3)
+        self.assertIn("1) " + "x" * 77 + "... [90]", line)
+        self.assertNotIn("4)", line)
+
+    def test_nothing_to_report(self):
+        self.assertEqual(to_oneline(Report("S", [], [], WHEN)), "S: nothing to report\n")
+
+    def test_new_findings_and_failed_checks_are_mentioned(self):
+        report = sample_report(["vlf: boom"])
+        report.baseline_counts = {"new": 2, "worse": 0, "better": 0, "same": 0}
+        self.assertTrue(to_oneline(report).endswith("(2 new since the baseline) (1 check(s) failed)\n"))
+
+    def test_no_new_findings_adds_nothing(self):
+        report = sample_report()
+        report.baseline_counts = {"new": 0, "worse": 1, "better": 0, "same": 1}
+        self.assertNotIn("baseline", to_oneline(report))
+
+    def test_one_line_only(self):
+        findings = [Finding("c", "two\nlines", 50)]
+        self.assertEqual(to_oneline(Report("S", findings, [], WHEN)).count("\n"), 1)
 
 
 class FilterTests(unittest.TestCase):

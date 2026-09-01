@@ -367,6 +367,12 @@ class CliTests(unittest.TestCase):
         kwargs = source_class.call_args.kwargs
         self.assertEqual((kwargs["query_timeout"], kwargs["login_timeout"]), (300, 3))
 
+    def test_oneline_format(self):
+        code, text = self.run_cli("-f", "oneline", "-S", "SQLPROD01")
+        self.assertEqual(code, 0)
+        self.assertEqual(text.count("\n"), 1)
+        self.assertTrue(text.startswith("SQLPROD01: 2 critical,"))
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

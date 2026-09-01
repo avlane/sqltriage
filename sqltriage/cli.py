@@ -37,7 +37,7 @@ def build_parser():
     parser.add_argument("-i", "--interval", type=float, default=10.0, help="seconds between wait stat samples")
     parser.add_argument("--samples", type=int, default=1, help="how many consecutive intervals to sample (shows a trend)")
     parser.add_argument("-n", "--top", type=int, default=5, help="how many waits to report")
-    parser.add_argument("-f", "--format", choices=sorted(FORMATS), help="text (default), json or markdown")
+    parser.add_argument("-f", "--format", choices=sorted(FORMATS), help="text (default), json, markdown or oneline")
     parser.add_argument("-o", "--output", metavar="FILE", help="write the report to FILE instead of standard output")
     parser.add_argument("--min-severity", choices=[label for _, label in reversed(LEVELS)], default="info",
                         help="hide findings ranked below this severity")

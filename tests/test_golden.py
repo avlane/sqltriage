@@ -32,6 +32,9 @@ class GoldenTests(unittest.TestCase):
     def test_markdown(self):
         self.check("markdown")
 
+    def test_oneline(self):
+        self.check("oneline")
+
 
 if __name__ == "__main__":
     unittest.main()

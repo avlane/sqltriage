@@ -49,7 +49,7 @@ on 2016 and later, up to SQL Server 2025. Python 3.11 or newer is needed.
 
 Output formats (`-f`): `text` (the default), `json` (with a `schema_version`, currently 2:
 each finding has its `rank` and a stable `key`; version 1 reports still work as baselines)
-and `markdown` for pasting into a ticket. `--min-severity high` hides the lower
+`markdown` for pasting into a ticket, and `oneline` for a chat message or an alert. `--min-severity high` hides the lower
 ranked findings and says how many were hidden.
 
 Each check, the views it reads and the permissions it needs are described in
