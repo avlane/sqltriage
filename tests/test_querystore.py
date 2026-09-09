@@ -198,6 +198,37 @@ class ForcedPlanTests(unittest.TestCase):
         self.assertIn("usp_EmployeeYtd", worst.title)
         self.assertGreater(worst.score, minor.score)
 
+    def test_manual_and_automatic_forcing_are_told_apart(self):
+        worst, minor = self.findings()
+        self.assertIn("this plan was forced manually", worst.evidence)
+        self.assertIn("this plan was forced by automatic tuning, not by a person", minor.evidence)
+        self.assertIn("un-forces one that keeps failing", minor.advice[1])
+
+    def test_automatic_tuning_scores_lower(self):
+        base = {"plan_id": 1, "query_id": 2, "force_failure_count": 120, "last_force_failure_reason_desc": "NO_INDEX",
+                "object_name": None, "query_sql_text": "SELECT 1"}
+        manual = querystore.force_failure_finding("Sales", dict(base, plan_forcing_type_desc="MANUAL"))
+        auto = querystore.force_failure_finding("Sales", dict(base, plan_forcing_type_desc="AUTO"))
+        unknown = querystore.force_failure_finding("Sales", dict(base, plan_forcing_type_desc=None))
+        self.assertEqual((manual.score, auto.score, unknown.score), (57, 47, 57))
+        self.assertFalse(any("forced" in e and "plan was" in e for e in unknown.evidence))
+
+    def test_the_column_is_only_selected_where_it_exists(self):
+        def sql_for(major):
+            class Fake(FixtureSource):
+                def fetch(inner, name, sql, params=(), database=None):
+                    rows = super().fetch(name, sql, params, database)
+                    if name == "instance_info":
+                        rows[0]["major_version"] = major
+                    return rows
+
+            return querystore.forced_failures_sql(Context(Fake(FIXTURES)))
+
+        self.assertIn("p.plan_forcing_type_desc AS plan_forcing_type_desc", sql_for(14))
+        self.assertIn("p.plan_forcing_type_desc AS plan_forcing_type_desc", sql_for(16))
+        self.assertIn("CAST(NULL AS nvarchar(60)) AS plan_forcing_type_desc", sql_for(13))
+        self.assertNotIn("{", sql_for(13))
+
     def test_unknown_reason(self):
         row = {"plan_id": 1, "query_id": 2, "force_failure_count": 1, "last_force_failure_reason_desc": "BRAND_NEW",
                "object_name": None, "query_sql_text": "SELECT 1"}

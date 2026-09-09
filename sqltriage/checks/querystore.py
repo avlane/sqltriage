@@ -141,6 +141,7 @@ SELECT p.plan_id,
        p.query_id,
        p.force_failure_count,
        p.last_force_failure_reason_desc,
+       {forcing_type} AS plan_forcing_type_desc,
        OBJECT_NAME(q.object_id) AS object_name,
        qt.query_sql_text
 FROM sys.query_store_plan AS p
@@ -151,6 +152,13 @@ JOIN sys.query_store_query_text AS qt
 WHERE p.is_forced_plan = 1
   AND p.force_failure_count > 0
 ORDER BY p.force_failure_count DESC;"""
+
+# plan_forcing_type_desc (MANUAL or AUTO, for automatic tuning) arrived with SQL
+# Server 2017; before that there is nothing to select.
+FORCING_TYPE_COLUMN = "p.plan_forcing_type_desc"
+NO_FORCING_TYPE = "CAST(NULL AS nvarchar(60))"
+FORCING_TYPE_MIN_MAJOR = 14
+AUTO_TUNING_SCORE_DROP = 10
 
 # last_force_failure_reason_desc -> (meaning, what to do)
 FORCE_FAILURE_REASONS = {
@@ -308,18 +316,28 @@ def force_failure_finding(database, row):
     )
     count = row["force_failure_count"]
     label = row.get("object_name") or "ad hoc query"
+    automatic = row.get("plan_forcing_type_desc") == "AUTO"
+    evidence = [
+        "{} failure(s); last reason {}: {}".format(count, reason, meaning),
+        "text: " + shorten(row["query_sql_text"]),
+    ]
+    advice = [todo]
+    score = min(80, 45 + count // 10)
+    if automatic:
+        evidence.append("this plan was forced by automatic tuning, not by a person")
+        advice.append("Automatic tuning checks forced plans and un-forces one that keeps failing, so this may clear itself.")
+        score = max(10, score - AUTO_TUNING_SCORE_DROP)
+    elif row.get("plan_forcing_type_desc") == "MANUAL":
+        evidence.append("this plan was forced manually")
     return Finding(
         check=NAME,
         title="Forced plan failing in {}: plan {} for query {} ({})".format(
             database, row["plan_id"], row["query_id"], label
         ),
-        score=min(80, 45 + count // 10),
+        score=score,
         detail="A plan has been forced for this query but the optimizer keeps failing to use it.",
-        evidence=[
-            "{} failure(s); last reason {}: {}".format(count, reason, meaning),
-            "text: " + shorten(row["query_sql_text"]),
-        ],
-        advice=[todo],
+        evidence=evidence,
+        advice=advice,
         data={"database": database, "plan_id": row["plan_id"], "failures": count, "reason": reason},
     )
 
@@ -368,6 +386,11 @@ def state_finding(database, row):
     )
 
 
+def forced_failures_sql(ctx):
+    major = ctx.server_major() or 0
+    return FORCED_FAILURES_SQL.format(forcing_type=FORCING_TYPE_COLUMN if major >= FORCING_TYPE_MIN_MAJOR else NO_FORCING_TYPE)
+
+
 def check_database(ctx, database, sql):
     findings = []
     for row in ctx.source.fetch("querystore_state", STATE_SQL, database=database):
@@ -382,7 +405,7 @@ def check_database(ctx, database, sql):
         findings.append(
             regression_finding(database, row, recent_waits(ctx, database, row["query_id"]), tuning.get(row["query_id"]))
         )
-    for row in ctx.source.fetch("querystore_forced_failures", FORCED_FAILURES_SQL, database=database):
+    for row in ctx.source.fetch("querystore_forced_failures", forced_failures_sql(ctx), database=database):
         findings.append(force_failure_finding(database, row))
     return findings
 

@@ -1,6 +1,6 @@
 sqltriage report for SQLPROD01 at 2023-03-14 10:00:00
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
-40 finding(s): 2 critical, 15 high, 14 medium, 8 low, 1 info
+40 finding(s): 2 critical, 15 high, 13 medium, 9 low, 1 info
 
  1. [CRITICAL 95] Blocking: spid 57 is blocking 6 session(s)
     Longest wait 94s.
@@ -125,6 +125,7 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
     A plan has been forced for this query but the optimizer keeps failing to use it.
       - 214 failure(s); last reason NO_INDEX: An index the forced plan uses no longer exists.
       - text: SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1
+      - this plan was forced manually
       > Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one.
 16. [HIGH 66] spid 112 holds a 12.0 GB memory grant and uses 1.0 GB
     An over-sized grant starves other queries of workspace memory.
@@ -182,43 +183,38 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - Stats Refresh - Hourly was due 2023-03-14T07:00:00 (178 min ago)
       - Purge Old Audit Rows was due 2023-03-14T08:30:00 (88 min ago)
       > Check that the Agent was running at those times and that the jobs are not stuck from an earlier run.
-25. [MEDIUM 45] Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)
-    A plan has been forced for this query but the optimizer keeps failing to use it.
-      - 3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.
-      - text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC
-      > Look in the error log and extended events for the failure; unforce if it persists.
-26. [MEDIUM 44] 36% of batches compiled a plan
+25. [MEDIUM 44] 36% of batches compiled a plan
     Compiling is CPU heavy and takes plan cache memory: plans are not being reused.
       - 150 compilations/s (12 of them recompilations) against 420 batch requests/s
       > Look for ad hoc statements with literals (forced parameterization, or optimize for ad hoc workloads).
       > A high recompilation rate points at temp tables, statistics updates or SET options changing.
-27. [MEDIUM 44] Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower
+26. [MEDIUM 44] Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower
       - average duration 24 ms now against 10 ms before (2.4x slower)
       - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
       - 3 plan(s) seen for this query
       - text: SELECT e.EmployeeId, e.Name FROM dbo.Employee e WHERE e.Dept = @dept AND e.Active = 1
       > In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
-28. [MEDIUM 40] Query Store in ReportsDB is not healthy
+27. [MEDIUM 40] Query Store in ReportsDB is not healthy
     While Query Store is not collecting, the regression figures for this database go stale.
       - storage is 96% used (960 of 1000 MB)
       > Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
-29. [MEDIUM 40] Log backups: PayrollDB last one was 1h10m ago
+28. [MEDIUM 40] Log backups: PayrollDB last one was 1h10m ago
       - last log backup 1h10m ago
       - 41,200 MB of log since then, 67% of the 61,440 MB log
       - the log backup job is failing: Agent job failed: DatabaseBackup - USER_DATABASES - LOG (3x in 24h)
       > Check the log backup job (see the Agent section) and the backup target.
-30. [MEDIUM 40] Persistent version store in PayrollDB is 31 GB
+29. [MEDIUM 40] Persistent version store in PayrollDB is 31 GB
     Row versions are piling up in the database because old transactions keep them alive.
       - persistent version store is 31.0 GB, 16% of the 200 GB of data files
       - oldest active transaction id 8812334421 is holding back cleanup
       - the oldest active transaction is probably the head blocker in: Blocking: spid 57 is blocking 6 session(s)
       > Find and finish that transaction: see the blocking section for sessions with open transactions.
       > Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up.
-31. [MEDIUM 40] Agent job running long: Purge Old Audit Rows (2h00m)
+30. [MEDIUM 40] Agent job running long: Purge Old Audit Rows (2h00m)
       - running for 2h00m and there is no run history to compare with
       - started 2023-03-14T08:00:00, now on step 1
       > Check what the job's session is waiting on before deciding to stop it.
-32. [LOW 35] Wait: PAGELATCH_UP
+31. [LOW 35] Wait: PAGELATCH_UP
     Contention on a data page that is already in memory.
       - 17% of non-idle wait time (38000 ms over 5200 waits, 7.3 ms average)
       - 3.8 tasks waiting on average during the sample
@@ -226,6 +222,13 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - probably the same problem as: tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages
       > In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
       > In a user database look for last-page insert hot spots.
+32. [LOW 35] Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)
+    A plan has been forced for this query but the optimizer keeps failing to use it.
+      - 3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.
+      - text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC
+      - this plan was forced by automatic tuning, not by a person
+      > Look in the error log and extended events for the failure; unforce if it persists.
+      > Automatic tuning checks forced plans and un-forces one that keeps failing, so this may clear itself.
 33. [LOW 35] Agent job failed: Nightly ETL Load (1x in 24h)
       - 1 failure(s) in the last 24 hours, most recent at 2023-03-14T02:00:00
       - ran for 4540s before failing

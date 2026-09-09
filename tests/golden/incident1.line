@@ -1,1 +1,1 @@
-SQLPROD01: 2 critical, 15 high, 14 medium, 8 low, 1 info. Top: 1) Blocking: spid 57 is blocking 6 session(s) [95]; 2) Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION [90]; 3) tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages [81]
+SQLPROD01: 2 critical, 15 high, 13 medium, 9 low, 1 info. Top: 1) Blocking: spid 57 is blocking 6 session(s) [95]; 2) Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION [90]; 3) tempdb allocation contention: 15 task(s) waiting on PFS/GAM/SGAM pages [81]

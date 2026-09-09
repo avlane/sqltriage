@@ -17,8 +17,8 @@
   "summary": {
     "critical": 2,
     "high": 15,
-    "medium": 14,
-    "low": 8,
+    "medium": 13,
+    "low": 9,
     "info": 1
   },
   "findings": [
@@ -425,7 +425,8 @@
       "block": [],
       "evidence": [
         "214 failure(s); last reason NO_INDEX: An index the forced plan uses no longer exists.",
-        "text: SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1"
+        "text: SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1",
+        "this plan was forced manually"
       ],
       "advice": [
         "Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one."
@@ -679,30 +680,6 @@
     },
     {
       "rank": 25,
-      "key": "querystore|Forced plan failing in PayrollDB: plan # for query # (ad hoc query)|PayrollDB|71",
-      "check": "querystore",
-      "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
-      "severity": "medium",
-      "score": 45,
-      "change": null,
-      "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
-      "block": [],
-      "evidence": [
-        "3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.",
-        "text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC"
-      ],
-      "advice": [
-        "Look in the error log and extended events for the failure; unforce if it persists."
-      ],
-      "data": {
-        "database": "PayrollDB",
-        "failures": 3,
-        "plan_id": 71,
-        "reason": "GENERAL_FAILURE"
-      }
-    },
-    {
-      "rank": 26,
       "key": "counters|#% of batches compiled a plan",
       "check": "counters",
       "title": "36% of batches compiled a plan",
@@ -724,7 +701,7 @@
       }
     },
     {
-      "rank": 27,
+      "rank": 26,
       "key": "querystore|Query Store regression in PayrollDB: query # (ad hoc query), #x slower|PayrollDB|5120",
       "check": "querystore",
       "title": "Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower",
@@ -750,7 +727,7 @@
       }
     },
     {
-      "rank": 28,
+      "rank": 27,
       "key": "querystore|Query Store in ReportsDB is not healthy|ReportsDB",
       "check": "querystore",
       "title": "Query Store in ReportsDB is not healthy",
@@ -772,7 +749,7 @@
       }
     },
     {
-      "rank": 29,
+      "rank": 28,
       "key": "vlf|Log backups: PayrollDB last one was #h#m ago|PayrollDB",
       "check": "vlf",
       "title": "Log backups: PayrollDB last one was 1h10m ago",
@@ -796,7 +773,7 @@
       }
     },
     {
-      "rank": 30,
+      "rank": 29,
       "key": "pvs|Persistent version store in PayrollDB is # GB|PayrollDB",
       "check": "pvs",
       "title": "Persistent version store in PayrollDB is 31 GB",
@@ -821,7 +798,7 @@
       }
     },
     {
-      "rank": 31,
+      "rank": 30,
       "key": "agent|Agent job running long: Purge Old Audit Rows (#h#m)|Purge Old Audit Rows",
       "check": "agent",
       "title": "Agent job running long: Purge Old Audit Rows (2h00m)",
@@ -843,7 +820,7 @@
       }
     },
     {
-      "rank": 32,
+      "rank": 31,
       "key": "waits|Wait: PAGELATCH_UP|PAGELATCH_UP",
       "check": "waits",
       "title": "Wait: PAGELATCH_UP",
@@ -869,6 +846,32 @@
         "tasks": 5200,
         "wait_ms": 38000,
         "wait_type": "PAGELATCH_UP"
+      }
+    },
+    {
+      "rank": 32,
+      "key": "querystore|Forced plan failing in PayrollDB: plan # for query # (ad hoc query)|PayrollDB|71",
+      "check": "querystore",
+      "title": "Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)",
+      "severity": "low",
+      "score": 35,
+      "change": null,
+      "detail": "A plan has been forced for this query but the optimizer keeps failing to use it.",
+      "block": [],
+      "evidence": [
+        "3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.",
+        "text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC",
+        "this plan was forced by automatic tuning, not by a person"
+      ],
+      "advice": [
+        "Look in the error log and extended events for the failure; unforce if it persists.",
+        "Automatic tuning checks forced plans and un-forces one that keeps failing, so this may clear itself."
+      ],
+      "data": {
+        "database": "PayrollDB",
+        "failures": 3,
+        "plan_id": 71,
+        "reason": "GENERAL_FAILURE"
       }
     },
     {

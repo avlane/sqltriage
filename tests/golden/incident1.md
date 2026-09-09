@@ -4,7 +4,7 @@ _Generated 2023-03-14 10:00:00_
 
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
 
-**40 finding(s):** 2 critical, 15 high, 14 medium, 8 low, 1 info
+**40 finding(s):** 2 critical, 15 high, 13 medium, 9 low, 1 info
 
 | # | Severity | Score | Finding |
 |---|----------|-------|---------|
@@ -32,14 +32,14 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
 | 22 | medium | 56 | Wait: LCK_M_X |
 | 23 | medium | 49 | Blocking: spid 93 is blocking 1 session(s) |
 | 24 | medium | 46 | 2 enabled job(s) have missed their schedule |
-| 25 | medium | 45 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
-| 26 | medium | 44 | 36% of batches compiled a plan |
-| 27 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
-| 28 | medium | 40 | Query Store in ReportsDB is not healthy |
-| 29 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
-| 30 | medium | 40 | Persistent version store in PayrollDB is 31 GB |
-| 31 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
-| 32 | low | 35 | Wait: PAGELATCH_UP |
+| 25 | medium | 44 | 36% of batches compiled a plan |
+| 26 | medium | 44 | Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower |
+| 27 | medium | 40 | Query Store in ReportsDB is not healthy |
+| 28 | medium | 40 | Log backups: PayrollDB last one was 1h10m ago |
+| 29 | medium | 40 | Persistent version store in PayrollDB is 31 GB |
+| 30 | medium | 40 | Agent job running long: Purge Old Audit Rows (2h00m) |
+| 31 | low | 35 | Wait: PAGELATCH_UP |
+| 32 | low | 35 | Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query) |
 | 33 | low | 35 | Agent job failed: Nightly ETL Load (1x in 24h) |
 | 34 | low | 33 | Wait: WRITELOG |
 | 35 | low | 31 | Wait: LCK_M_S |
@@ -238,6 +238,7 @@ A plan has been forced for this query but the optimizer keeps failing to use it.
 
 - 214 failure(s); last reason NO_INDEX: An index the forced plan uses no longer exists.
 - text: SELECT SUM(l.Amount) FROM dbo.PayRunLine l WHERE l.EmployeeId = @p0 AND l.TaxYear = @p1
+- this plan was forced manually
 
 Next steps:
 1. Recreate the index, or unforce the plan (sp_query_store_unforce_plan) and pick a new one.
@@ -342,17 +343,7 @@ Their next run time is more than 45 minutes in the past.
 Next steps:
 1. Check that the Agent was running at those times and that the jobs are not stuck from an earlier run.
 
-**25. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (medium, 45)
-
-A plan has been forced for this query but the optimizer keeps failing to use it.
-
-- 3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.
-- text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC
-
-Next steps:
-1. Look in the error log and extended events for the failure; unforce if it persists.
-
-**26. 36% of batches compiled a plan** (medium, 44)
+**25. 36% of batches compiled a plan** (medium, 44)
 
 Compiling is CPU heavy and takes plan cache memory: plans are not being reused.
 
@@ -362,7 +353,7 @@ Next steps:
 1. Look for ad hoc statements with literals (forced parameterization, or optimize for ad hoc workloads).
 1. A high recompilation rate points at temp tables, statistics updates or SET options changing.
 
-**27. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
+**26. Query Store regression in PayrollDB: query 5120 (ad hoc query), 2.4x slower** (medium, 44)
 
 - average duration 24 ms now against 10 ms before (2.4x slower)
 - 60 execution(s) recently, 1400 in the baseline window; about 1s lost
@@ -372,7 +363,7 @@ Next steps:
 Next steps:
 1. In Query Store, compare the plans for query 5120 and consider forcing the earlier one (sp_query_store_force_plan).
 
-**28. Query Store in ReportsDB is not healthy** (medium, 40)
+**27. Query Store in ReportsDB is not healthy** (medium, 40)
 
 While Query Store is not collecting, the regression figures for this database go stale.
 
@@ -381,7 +372,7 @@ While Query Store is not collecting, the regression figures for this database go
 Next steps:
 1. Raise MAX_STORAGE_SIZE_MB or lower the retention (STALE_QUERY_THRESHOLD_DAYS), then set OPERATION_MODE = READ_WRITE.
 
-**29. Log backups: PayrollDB last one was 1h10m ago** (medium, 40)
+**28. Log backups: PayrollDB last one was 1h10m ago** (medium, 40)
 
 - last log backup 1h10m ago
 - 41,200 MB of log since then, 67% of the 61,440 MB log
@@ -390,7 +381,7 @@ Next steps:
 Next steps:
 1. Check the log backup job (see the Agent section) and the backup target.
 
-**30. Persistent version store in PayrollDB is 31 GB** (medium, 40)
+**29. Persistent version store in PayrollDB is 31 GB** (medium, 40)
 
 Row versions are piling up in the database because old transactions keep them alive.
 
@@ -402,7 +393,7 @@ Next steps:
 1. Find and finish that transaction: see the blocking section for sessions with open transactions.
 1. Do not turn ADR off to shrink it: finish the old transactions, then let the cleaner catch up.
 
-**31. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
+**30. Agent job running long: Purge Old Audit Rows (2h00m)** (medium, 40)
 
 - running for 2h00m and there is no run history to compare with
 - started 2023-03-14T08:00:00, now on step 1
@@ -410,7 +401,7 @@ Next steps:
 Next steps:
 1. Check what the job's session is waiting on before deciding to stop it.
 
-**32. Wait: PAGELATCH_UP** (low, 35)
+**31. Wait: PAGELATCH_UP** (low, 35)
 
 Contention on a data page that is already in memory.
 
@@ -422,6 +413,18 @@ Contention on a data page that is already in memory.
 Next steps:
 1. In tempdb this is allocation contention (PFS, GAM, SGAM); see the tempdb section.
 1. In a user database look for last-page insert hot spots.
+
+**32. Forced plan failing in PayrollDB: plan 71 for query 3390 (ad hoc query)** (low, 35)
+
+A plan has been forced for this query but the optimizer keeps failing to use it.
+
+- 3 failure(s); last reason GENERAL_FAILURE: The plan could not be forced for a reason Query Store does not break down.
+- text: SELECT TOP (50) * FROM dbo.AuditLog ORDER BY LoggedAt DESC
+- this plan was forced by automatic tuning, not by a person
+
+Next steps:
+1. Look in the error log and extended events for the failure; unforce if it persists.
+1. Automatic tuning checks forced plans and un-forces one that keeps failing, so this may clear itself.
 
 **33. Agent job failed: Nightly ETL Load (1x in 24h)** (low, 35)
 
