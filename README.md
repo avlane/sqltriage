@@ -70,11 +70,13 @@ what it also shows up as (see `sqltriage/correlate.py`).
 ## Sample
 
 From the recorded incident in `tests/fixtures/incident1` (an application left a
-transaction open, tempdb is contended, and an AG secondary is disconnected):
+transaction open, tempdb is contended, an AG secondary is disconnected and a log
+backup job is failing), the top of the report:
 
 ```
 sqltriage report for SQLPROD01 at 2023-03-14 10:00:00
 SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 2023-03-02T03:12:44
+40 finding(s): 2 critical, 15 high, 13 medium, 9 low, 1 info
 
  1. [CRITICAL 95] Blocking: spid 57 is blocking 6 session(s)
     Longest wait 94s.
@@ -96,6 +98,7 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - head blocker input buffer - RPC Event: Proc [Database Id = 5 Object Id = 1134627161]
       - also shows up as: LCK_M_S, LCK_M_X
       - also shows up as: Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
+      - also shows up as: Persistent version store in PayrollDB is 31 GB
       > Find out why spid 57 is not finishing; KILL is the last resort.
  2. [CRITICAL 90] Log: PayrollDB has 18,432 VLFs and log reuse wait ACTIVE_TRANSACTION
       - 18,432 VLFs in 61,440 MB of log (17900 active)
@@ -112,10 +115,11 @@ SQL Server 2019 15.0.4298.1 (Enterprise Edition (64-bit)), 16 CPUs, up since 202
       - PFS   2:3:1  3 task(s) waiting, longest 15 ms
       - GAM   2:2:2  1 task(s) waiting, longest 6 ms
       - PFS   2:1:8088  1 task(s) waiting, longest 5 ms
-      - other 2:1:1234  1 task(s) waiting, longest 4 ms
+      - other 2:1:1234  1 task(s) waiting, longest 4 ms - DATA_PAGE of system table object_id 34
       - also shows up as: PAGELATCH_UP
       > Make sure tempdb has several equally sized data files (one per core, up to 8, is the usual start).
       > Look for code that creates and drops temp tables at a very high rate, or large table variables.
+      > System table pages are the hot ones: memory-optimized tempdb metadata (ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON, needs a restart) removes that contention.
 ```
 
 ## Recording an incident

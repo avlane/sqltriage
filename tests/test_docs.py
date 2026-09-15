@@ -21,6 +21,15 @@ class DocsTests(unittest.TestCase):
         for name in CHECKS:
             self.assertIn("| `{}`".format(name), readme)
 
+    def test_the_readme_sample_is_the_top_of_the_golden_report(self):
+        readme = self.read("README.md")
+        start = readme.index("## Sample")
+        opening = readme.index("```\n", start) + 4
+        sample = readme[opening : readme.index("\n```", opening)]
+        golden = self.read("tests", "golden", "incident1.txt")
+        self.assertTrue(golden.startswith(sample), "README sample is out of date; copy the top of tests/golden/incident1.txt")
+        self.assertGreater(sample.count("\n"), 30)
+
     def test_every_dmv_named_in_the_docs_is_used_by_some_check(self):
         source = ""
         checks_dir = os.path.join(ROOT, "sqltriage", "checks")

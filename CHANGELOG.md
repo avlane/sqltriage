@@ -2,6 +2,24 @@
 
 Versions follow the usual major.minor.patch.
 
+## 1.0.0 - 2026-09-15
+
+- Baselines: `--baseline FILE` or `--baseline-dir DIR` mark findings new, worse,
+  better or unchanged and list what was resolved; `--save DIR` keeps a history.
+- New checks: performance counters (deadlocks, lock timeouts, compile rate) and
+  persisted version store growth. CPU now tells SQL Server's use from the rest of
+  the host's.
+- AG: distributed and contained groups are labelled.
+- `sqltriage explain WAIT_TYPE`, `--format oneline`, a severity summary in every
+  format, a rank and a stable key on every JSON finding (schema version 2).
+- `--query-timeout` and `--login-timeout`; permission errors come with advice.
+- Tempdb: suggests memory-optimized metadata where it helps. Query Store: says whether
+  a failing forced plan was forced by hand or by automatic tuning.
+- Fixed: a healthy server reading as an incident (signal waits on an idle
+  server, background waits ranked on share alone), an unreadable report file
+  left behind by a failed write, slow Agent history queries on a large msdb.
+- Documentation for every check in docs/checks.md.
+
 ## 0.6.0 - 2025-12-16
 
 - Memory check: queries waiting for a grant, oversized grants, OS and process

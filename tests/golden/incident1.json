@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "tool": "sqltriage 0.6.0",
+  "tool": "sqltriage 1.0.0",
   "server": "SQLPROD01",
   "instance": {
     "server_name": "SQLPROD01",
