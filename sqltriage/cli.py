@@ -12,7 +12,8 @@ from .render import FORMATS
 from .models import LEVELS, severity_rank
 from .redact import redact_findings
 from .report import build_report, filter_report, only_changes
-from .source import FixtureSource, MssqlPythonSource, PyodbcSource, RecordingSource
+from .errors import hint_for
+from .source import FixtureSource, MssqlPythonSource, PyodbcSource, RecordingSource, SourceError
 
 
 def build_parser():
@@ -169,6 +170,12 @@ def main(argv=None, out=None):
         )
         if args.record:
             source = RecordingSource(source, args.record)
+    try:
+        source.open()
+    except SourceError as exc:
+        hint = hint_for(str(exc))
+        sys.stderr.write("{}{}\n".format(exc, " ({})".format(hint) if hint else ""))
+        return 2
     options = dict(options)
     for name in ("databases", "exclude_databases", "ignore_jobs"):
         value = getattr(args, name)

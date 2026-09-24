@@ -55,6 +55,78 @@ class PyodbcSourceTests(unittest.TestCase):
             source.fetch("waits", "SELECT 1")
         self.assertIn("waits", str(cm.exception))
 
+    def test_a_missing_driver_is_a_clear_error(self):
+        class Missing(PyodbcSource):
+            def _import_connect(self):
+                raise ImportError("No module named 'pyodbc'")
+
+        with self.assertRaises(SourceError) as cm:
+            Missing("DSN=x").fetch("rows", "SELECT 1")
+        self.assertEqual(str(cm.exception), "pyodbc is not installed: pip install pyodbc, or use --library mssql-python")
+
+        class MissingMssql(MssqlPythonSource):
+            def _import_connect(self):
+                raise ImportError("No module named 'mssql_python'")
+
+        with self.assertRaises(SourceError) as cm:
+            MissingMssql("x").open()
+        self.assertEqual(str(cm.exception), "mssql-python is not installed: pip install mssql-python, or use --library pyodbc")
+
+    def test_a_refused_login_is_a_source_error(self):
+        def refuse(cs, **kwargs):
+            raise RuntimeError("Login failed for user 'triage'.")
+
+        source = PyodbcSource("DSN=x", connect=refuse)
+        with self.assertRaises(SourceError) as cm:
+            source.open()
+        self.assertEqual(str(cm.exception), "could not connect: Login failed for user 'triage'.")
+
+    def test_open_connects_once(self):
+        calls = []
+
+        def connect(cs, **kwargs):
+            calls.append(cs)
+            return FakeConnection([])
+
+        source = PyodbcSource("DSN=x", connect=connect)
+        source.open()
+        source.open()
+        self.assertEqual(calls, ["DSN=x"])
+
+    def test_a_database_that_cannot_be_opened_is_a_source_error(self):
+        class Refuses(FakeConnection):
+            def cursor(inner):
+                cursor = super().cursor()
+                original = cursor.execute
+
+                def execute(sql, *params):
+                    if sql.startswith("USE "):
+                        raise RuntimeError("The server principal is not able to access the database")
+                    return original(sql, *params)
+
+                cursor.execute = execute
+                return cursor
+
+        source = PyodbcSource("DSN=x", connect=lambda cs, **kw: Refuses([]))
+        with self.assertRaises(SourceError) as cm:
+            source.fetch("querystore_state", "SELECT 1", database="Locked")
+        self.assertIn("querystore_state: The server principal is not able to access the database", str(cm.exception))
+
+    def test_the_base_source_opens_trivially(self):
+        FixtureSource("x").open()
+
+    def test_recording_source_passes_open_through(self):
+        class Inner(FixtureSource):
+            opened = False
+
+            def open(self):
+                self.opened = True
+
+        inner = Inner("x")
+        with tempfile.TemporaryDirectory() as tmp:
+            RecordingSource(inner, tmp).open()
+        self.assertTrue(inner.opened)
+
     def test_timeouts_are_passed_to_the_driver(self):
         seen = {}
 

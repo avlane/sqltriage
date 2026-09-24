@@ -373,6 +373,30 @@ class CliTests(unittest.TestCase):
         self.assertEqual(text.count("\n"), 1)
         self.assertTrue(text.startswith("SQLPROD01: 2 critical,"))
 
+    def test_a_missing_driver_stops_the_run_with_one_message(self):
+        import unittest.mock
+
+        with unittest.mock.patch("sqltriage.cli.choose_library", return_value="pyodbc"):
+            with unittest.mock.patch("sqltriage.source.PyodbcSource._import_connect", side_effect=ImportError("pyodbc")):
+                with contextlib.redirect_stderr(io.StringIO()) as err:
+                    out = io.StringIO()
+                    code = main(["--driver", "ODBC Driver 18 for SQL Server"], out=out)
+        self.assertEqual(code, 2)
+        self.assertEqual(out.getvalue(), "")
+        self.assertEqual(err.getvalue(), "pyodbc is not installed: pip install pyodbc, or use --library mssql-python\n")
+
+    def test_a_refused_login_stops_the_run_with_advice(self):
+        import unittest.mock
+
+        def refuse(*args, **kwargs):
+            raise RuntimeError("Login failed for user 'triage'.")
+
+        with unittest.mock.patch("sqltriage.source.PyodbcSource._import_connect", return_value=refuse):
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                code = main(["--driver", "ODBC Driver 18 for SQL Server", "--library", "pyodbc", "--check"], out=io.StringIO())
+        self.assertEqual(code, 2)
+        self.assertIn("could not connect: Login failed for user 'triage'. (the login was refused;", err.getvalue())
+
     def test_markdown_format(self):
         _, text = self.run_cli("-f", "markdown", "--only", "vlf")
         self.assertTrue(text.startswith("### sqltriage report for localhost"))

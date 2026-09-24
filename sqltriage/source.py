@@ -24,6 +24,9 @@ class Source:
         """Return the result of ``sql`` as a list of dicts keyed by column."""
         raise NotImplementedError
 
+    def open(self):
+        """Connect now, raising SourceError if that cannot be done (a no-op where there is nothing to connect)."""
+
     def close(self):
         pass
 
@@ -36,6 +39,9 @@ class DbApiSource(Source):
     without any driver installed.
     """
 
+    driver_name = "the database driver"
+    install_hint = "install it with pip"
+
     def __init__(self, connection_string, connect=None, query_timeout=60, login_timeout=15):
         self._connection_string = connection_string
         self._connect = connect
@@ -47,8 +53,14 @@ class DbApiSource(Source):
 
     def _connection(self):
         if self._conn is None:
-            connect = self._connect or self._import_connect()
-            self._conn = connect(self._connection_string, autocommit=True, timeout=self._login_timeout)
+            try:
+                connect = self._connect or self._import_connect()
+            except ImportError as exc:
+                raise SourceError("{} is not installed: {}".format(self.driver_name, self.install_hint)) from exc
+            try:
+                self._conn = connect(self._connection_string, autocommit=True, timeout=self._login_timeout)
+            except Exception as exc:  # the driver's own Error classes, and friends
+                raise SourceError("could not connect: {}".format(exc)) from exc
             try:
                 self._conn.timeout = self._query_timeout
             except AttributeError:  # a driver without a settable query timeout
@@ -57,6 +69,9 @@ class DbApiSource(Source):
 
     def _import_connect(self):
         raise NotImplementedError
+
+    def open(self):
+        self._connection()
 
     def _use(self, cursor, database):
         if self._home is None:
@@ -72,8 +87,10 @@ class DbApiSource(Source):
         conn = self._connection()
         cursor = conn.cursor()
         try:
-            self._use(cursor, database)
             try:
+                # USE can fail too (a database this login cannot open); that is
+                # this query's failure, not a crash for the whole run
+                self._use(cursor, database)
                 cursor.execute(sql, *params)
                 columns = [col[0] for col in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -92,6 +109,9 @@ class DbApiSource(Source):
 
 
 class PyodbcSource(DbApiSource):
+    driver_name = "pyodbc"
+    install_hint = "pip install pyodbc, or use --library mssql-python"
+
     def _import_connect(self):
         import pyodbc
 
@@ -100,6 +120,9 @@ class PyodbcSource(DbApiSource):
 
 class MssqlPythonSource(DbApiSource):
     """Microsoft's own Python driver, which needs no ODBC driver installed."""
+
+    driver_name = "mssql-python"
+    install_hint = "pip install mssql-python, or use --library pyodbc"
 
     def _import_connect(self):
         import mssql_python
@@ -173,6 +196,9 @@ class RecordingSource(Source):
             json.dump(rows, handle, indent=2, default=_jsonable)
             handle.write("\n")
         return rows
+
+    def open(self):
+        self.inner.open()
 
     def close(self):
         self.inner.close()
